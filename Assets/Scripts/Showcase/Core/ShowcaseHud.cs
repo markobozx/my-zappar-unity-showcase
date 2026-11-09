@@ -22,6 +22,7 @@ namespace Showcase
         private RectTransform m_resultButtons;
         private Coroutine m_toastRoutine;
         private string m_experienceHint = "";
+        private GameObject m_canvas;
 
         public event Action BackPressed;
 
@@ -30,12 +31,15 @@ namespace Showcase
             Instance = this;
             Build();
             ShowcaseRig.TrackingChanged += OnTrackingChanged;
+            ShowcaseRig.ModeChanged += OnModeChanged;
             OnTrackingChanged(ShowcaseRig.Instance != null && ShowcaseRig.Instance.IsTracking);
+            OnModeChanged(ShowcaseRig.Instance != null ? ShowcaseRig.Instance.Mode : ViewMode.Scanning);
         }
 
         void OnDestroy()
         {
             ShowcaseRig.TrackingChanged -= OnTrackingChanged;
+            ShowcaseRig.ModeChanged -= OnModeChanged;
             ShowcaseTray.OpenChanged -= OnTrayChanged;
             if (Instance == this)
                 Instance = null;
@@ -45,6 +49,7 @@ namespace Showcase
         {
             var go = new GameObject("HUD Canvas", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
             go.transform.SetParent(transform, false);
+            m_canvas = go;
             var canvas = go.GetComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = 50;
@@ -142,6 +147,8 @@ namespace Showcase
         }
 
         private void OnTrackingChanged(bool tracking) => Refresh();
+        // The scan screen has the whole screen until a target is found.
+        private void OnModeChanged(ViewMode mode) => m_canvas.SetActive(mode != ViewMode.Scanning);
         private void OnTrayChanged(bool open) => Refresh();
 
         private void Refresh()

@@ -435,7 +435,7 @@ setTimeout(() => { console.log('SIGNIN_TIMEOUT'); process.exit(2); }, 180000);
             }
             using (new EditorGUI.DisabledScope(Busy || string.IsNullOrEmpty(Settings.projectId)))
                 if (GUILayout.Button("Publish an already-uploaded version (" + Settings.version + ")")) PublishExisting();
-            EditorGUILayout.HelpBox("If the upload fails, the tool zips the build, shows it in Finder and opens ZapWorks so you can upload the zip by hand.", MessageType.None);
+            EditorGUILayout.HelpBox("If the upload fails, the tool zips the build, shows it in Finder and opens ZapWorks so you can upload the zip by hand. Zips are named " + ZapparRelease.ZipPrefix + "<version>.zip; over " + ZapparRelease.SoftLimitMB + " MB warns, over " + ZapparRelease.HardLimitMB + " MB is refused (ZapWorks allows 25 MB).", MessageType.None);
 
             if (!string.IsNullOrEmpty(m_lastUrl))
             {
@@ -457,7 +457,7 @@ setTimeout(() => { console.log('SIGNIN_TIMEOUT'); process.exit(2); }, 180000);
                 EditorUserBuildSettings.SwitchActiveBuildTarget(BuildTargetGroup.WebGL, BuildTarget.WebGL);
             }
             AddLog("Building WebGL to " + Settings.buildPath + "…");
-            BuildReport report = BuildScript.BuildWebGL(Settings.buildPath);
+            BuildReport report = ZapparRelease.Build(Settings.buildPath, Settings.version);
             var s = report.summary;
             AddLog("Build " + s.result + " in " + s.totalTime.ToString(@"mm\:ss") + ", " + (s.totalSize / (1024f * 1024f)).ToString("0.0") + " MB, " + s.totalErrors + " errors");
             if (s.result == BuildResult.Succeeded) onSuccess?.Invoke();
@@ -512,32 +512,12 @@ setTimeout(() => { console.log('SIGNIN_TIMEOUT'); process.exit(2); }, 180000);
             else AddLog("No build folder yet: " + Settings.buildPath);
         }
 
-        // Zip with index.html at the root, the layout ZapWorks expects for a manual upload.
+        // Zip with index.html at the root, the layout ZapWorks expects for a manual upload; checks the size limits.
         string MakeZip()
         {
-            if (!HasBuild) { AddLog("No build to zip."); return null; }
-            string safeName = Regex.Replace(PlayerSettings.productName, @"[^A-Za-z0-9_-]+", "-").Trim('-');
-            string zipPath = Path.Combine(Path.GetDirectoryName(BuildDir), safeName + "-webgl-" + Settings.version + ".zip");
-            try
-            {
-                if (File.Exists(zipPath)) File.Delete(zipPath);
-                using (var zip = ZipFile.Open(zipPath, ZipArchiveMode.Create))
-                {
-                    foreach (var file in Directory.GetFiles(BuildDir, "*", SearchOption.AllDirectories))
-                    {
-                        string rel = file.Substring(BuildDir.Length).TrimStart('/', '\\').Replace('\\', '/');
-                        if (rel.Split('/').Any(p => p.StartsWith("."))) continue;
-                        zip.CreateEntryFromFile(file, rel);
-                    }
-                }
-                AddLog("Zipped build → " + zipPath);
-                return zipPath;
-            }
-            catch (Exception e)
-            {
-                AddLog("Zip failed: " + e.Message);
-                return null;
-            }
+            string zip = ZapparRelease.Zip(Settings.buildPath, Settings.version, out string message);
+            AddLog(zip != null ? "Zipped build → " + zip + "  ·  " + message : message);
+            return zip;
         }
 
         // ---------- Log ----------

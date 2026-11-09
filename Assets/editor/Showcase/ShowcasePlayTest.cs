@@ -79,9 +79,12 @@ namespace Showcase.EditorTools
             {
                 case 0:
                     if (ShowcaseRig.Instance == null || hub == null) { Fail("rig or hub missing in play mode"); return; }
-                    Log("hub ok; free camera active: " + (ShowcaseRig.ActiveCamera != null && !ShowcaseRig.Instance.IsTracking));
-                    Shot("hub", "play-hub");
-                    if (s_target == "hub") { ShowcaseRig.Instance.SetTracking(true); ShowcaseRig.Instance.SetTracking(false); s_step = 6; Wait(0.5); return; }
+                    // The app must open on the scan screen, not straight into the free camera.
+                    if (!ShowcaseRig.Instance.IsScanning) s_errors.Add("rig did not start in Scanning (mode " + ShowcaseRig.Instance.Mode + ")");
+                    if (ShowcaseTargets.Instance == null || ShowcaseTargets.Instance.Targets.Count == 0) s_errors.Add("no ShowcaseTargets / targets");
+                    else Log("targets: " + string.Join(", ", ShowcaseTargets.Instance.Targets.Select(t => t.Id + "→" + t.Experience + (t.Image != null ? "" : " (NO IMAGE)") + (t.Tracker != null ? "" : " (NO TRACKER)"))));
+                    Shot("hub", "play-scan");
+                    if (s_target == "hub") { ShowcaseRig.Instance.SetTracking(true); ShowcaseRig.Instance.SetTracking(false); s_step = 7; Wait(0.5); return; }
                     s_queue = UnityEngine.Object.FindObjectsByType<ShowcaseExperience>(FindObjectsInactive.Include, FindObjectsSortMode.None)
                         .Where(e => s_target == "all" || e.Id == s_target).OrderBy(e => e.transform.GetSiblingIndex()).ToList();
                     if (s_queue.Count == 0) { Fail("no experience matching '" + s_target + "'"); return; }
@@ -141,6 +144,11 @@ namespace Showcase.EditorTools
 
                 case 6:
                     Finish();
+                    break;
+
+                case 7: // hub only: the free camera after the AR round trip
+                    Shot("hub", "play-hub");
+                    s_step = 6; Wait(0.3);
                     break;
             }
         }

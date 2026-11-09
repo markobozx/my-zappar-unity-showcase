@@ -23,6 +23,14 @@ namespace Showcase.EditorTools
         public const string SourceScene = "Assets/Scenes/URP Basic.unity";
         public const string ScenePath = "Assets/Scenes/Showcase.unity";
         const string FxLibraryPath = "Assets/Showcase/ShowcaseFxLibrary.asset";
+        // A target = StreamingAssets/<id>.zpt (train it in Zappar > ZapWorks CLI) + an image with the same
+        // name here, shown on the scan screen.
+        public const string TargetImagesFolder = "Assets/Showcase/Targets";
+        const string ZptFolder = "Assets/StreamingAssets";
+        // Committed in the repo; the built app re-reads it from GitHub at startup, so editing it on
+        // github.com changes which experience each target opens without a new build.
+        public const string RemoteConfigFile = "RemoteConfig/showcase-config.json";
+        public const string RemoteConfigUrl = "https://raw.githubusercontent.com/markobozx/unity-example-image-tracking-3d-animation/urp-migration/" + RemoteConfigFile;
 
         // Pedestal defaults, used until an experience's builder exists.
         static readonly (string id, string title, string blurb, string prop)[] Slots =
@@ -151,7 +159,6 @@ namespace Showcase.EditorTools
 
         static void SetupRig(Transform world)
         {
-            var tracker = FindAll<Zappar.ZapparImageTrackingTarget>().FirstOrDefault();
             var arCam = FindAll<Zappar.ZapparCamera>().FirstOrDefault()?.GetComponent<Camera>();
             var bgCam = FindAll<Zappar.ZapparCameraBackground>().FirstOrDefault()?.GetComponent<Camera>();
 
@@ -184,16 +191,7 @@ namespace Showcase.EditorTools
             ShowcaseBuildContext.Set(rig, "m_world", world);
             ShowcaseBuildContext.Set(rig, "m_fx", FxLibrary());
 
-            if (tracker != null)
-            {
-                // World used to be shown/hidden by the tracker; now it is always on and the rig switches cameras.
-                ClearPersistent(tracker, "OnSeenEvent");
-                ClearPersistent(tracker, "OnNotSeenEvent");
-                UnityEventTools.AddPersistentListener(tracker.OnSeenEvent, rig.OnTargetSeen);
-                UnityEventTools.AddPersistentListener(tracker.OnNotSeenEvent, rig.OnTargetLost);
-                EditorUtility.SetDirty(tracker);
-            }
-            else Log("ERROR: no ZapparImageTrackingTarget found");
+            SetupTargets(rigGo, world, arCam);
 
             // The old example canvas: keep only the Look button, small, bottom-right.
             var canvas = FindAll<Canvas>().FirstOrDefault(c => c.name == "Canvas");
@@ -224,7 +222,86 @@ namespace Showcase.EditorTools
                 UnityEngine.Object.DestroyImmediate(es.gameObject);
             new GameObject("EventSystem", typeof(UnityEngine.EventSystems.EventSystem), typeof(UnityEngine.EventSystems.StandaloneInputModule));
 
-            Log("Rig set up: AR camera " + (arCam != null) + ", background " + (bgCam != null) + ", tracker " + (tracker != null));
+            Log("Rig set up: AR camera " + (arCam != null) + ", background " + (bgCam != null));
+        }
+
+        // One Zappar tracker per target image, all routed through ShowcaseTargets.
+        static void SetupTargets(GameObject rigGo, Transform world, Camera arCam)
+        {
+            var trackers = FindAll<Zappar.ZapparImageTrackingTarget>().ToList();
+            var original = trackers.FirstOrDefault();
+            var defaults = File.Exists(RemoteConfigFile) ? JsonUtility.FromJson<ShowcaseRemoteConfig>(File.ReadAllText(RemoteConfigFile)) : null;
+
+            var targets = new List<ShowcaseTarget>();
+            var images = Directory.Exists(TargetImagesFolder)
+                ? Directory.GetFiles(TargetImagesFolder).Where(f => f.EndsWith(".png") || f.EndsWith(".jpg") || f.EndsWith(".jpeg")).OrderBy(f => f).ToList()
+                : new List<string>();
+            foreach (var imagePath in images)
+            {
+                string id = Path.GetFileNameWithoutExtension(imagePath);
+                string zpt = id + ".zpt";
+                if (!File.Exists(Path.Combine(ZptFolder, zpt))) { Log("WARNING: target image " + imagePath + " has no " + zpt + " in " + ZptFolder + "; skipped"); continue; }
+
+                var importer = (TextureImporter)AssetImporter.GetAtPath(imagePath.Replace('\\', '/'));
+                if (importer != null && (importer.maxTextureSize != 512 || importer.mipmapEnabled || importer.npotScale != TextureImporterNPOTScale.None))
+                {
+                    importer.textureType = TextureImporterType.Default;
+                    importer.maxTextureSize = 512;
+                    importer.mipmapEnabled = false;
+                    importer.npotScale = TextureImporterNPOTScale.None;
+                    importer.wrapMode = TextureWrapMode.Clamp;
+                    importer.SaveAndReimport();
+                }
+
+                var tracker = trackers.FirstOrDefault(t => t.Target == zpt);
+                if (tracker == null)
+                {
+                    var go = new GameObject("Image Target - " + id);
+                    if (original != null) go.transform.SetParent(original.transform.parent, false);
+                    tracker = go.AddComponent<Zappar.ZapparImageTrackingTarget>();
+                    tracker.Target = zpt;
+                    trackers.Add(tracker);
+                }
+                string exp = ShowcaseTargets.HubId;
+                if (defaults != null)
+                {
+                    if (!string.IsNullOrEmpty(defaults.defaultExperience)) exp = defaults.defaultExperience;
+                    var own = defaults.targets?.FirstOrDefault(t => t != null && t.id == id);
+                    if (own != null && !string.IsNullOrEmpty(own.experience)) exp = own.experience;
+                }
+                targets.Add(new ShowcaseTarget { Id = id, Experience = exp, Image = AssetDatabase.LoadAssetAtPath<Texture2D>(imagePath), Tracker = tracker });
+            }
+
+            // Trackers left over from removed targets would still cost tracking time.
+            foreach (var t in trackers.Where(t => targets.All(x => x.Tracker != t)).ToList())
+            {
+                if (world.IsChildOf(t.transform)) { Log("WARNING: tracker " + t.name + " holds World but has no target image; kept"); continue; }
+                Log("Removed tracker " + t.name + " (no image in " + TargetImagesFolder + ")");
+                UnityEngine.Object.DestroyImmediate(t.gameObject);
+            }
+            if (targets.Count == 0) { Log("ERROR: no image targets (need " + TargetImagesFolder + "/<name>.png + " + ZptFolder + "/<name>.zpt)"); return; }
+            if (targets.Count > 4) Log("WARNING: " + targets.Count + " targets: every tracker runs each frame, so older phones may slow down");
+
+            var router = rigGo.AddComponent<ShowcaseTargets>();
+            router.Configure(targets, RemoteConfigUrl);
+            for (int i = 0; i < targets.Count; i++)
+            {
+                var t = targets[i].Tracker;
+                ClearPersistent(t, "OnSeenEvent");
+                ClearPersistent(t, "OnNotSeenEvent");
+                UnityEventTools.AddIntPersistentListener(t.OnSeenEvent, router.OnSeen, i);
+                UnityEventTools.AddIntPersistentListener(t.OnNotSeenEvent, router.OnLost, i);
+                EditorUtility.SetDirty(t);
+            }
+            EditorUtility.SetDirty(router);
+
+            // Start anchored on the first target; ShowcaseTargets moves World when another one is seen.
+            Transform content = world;
+            while (content.parent != null && content.parent.GetComponent<Zappar.ZapparImageTrackingTarget>() == null) content = content.parent;
+            if (content.parent != targets[0].Tracker.transform) content.SetParent(targets[0].Tracker.transform, false);
+            var zcam = arCam != null ? arCam.GetComponent<Zappar.ZapparCamera>() : null;
+            if (zcam != null) { zcam.AnchorOrigin = targets[0].Tracker; EditorUtility.SetDirty(zcam); }
+            Log("Targets: " + string.Join(", ", targets.Select(t => t.Id + "→" + t.Experience)));
         }
 
         static void ClearPersistent(UnityEngine.Object target, string eventField)

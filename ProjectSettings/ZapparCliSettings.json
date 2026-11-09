@@ -1,6 +1,6 @@
 {
     "projectId": "2246373108288074442",
-    "version": "1.0.5",
+    "version": "0.0.3",
     "autoBumpVersion": true,
     "crossOriginIsolation": false,
     "buildPath": "Builds/WebGL",

@@ -15,7 +15,7 @@ namespace ZapparCliTools
         const string NodePathPref = "ZapparCli.NodePath";
 
         public string projectId = "";
-        public string version = "1.0.0";
+        public string version = "0.0.1";
         public bool autoBumpVersion = true;
         public bool crossOriginIsolation = false;
         public string buildPath = "Builds/WebGL";
@@ -70,11 +70,19 @@ namespace ZapparCliTools
             return "node";
         }
 
+        // 0.0.98 -> 0.0.99, then stops: moving to the next minor (0.1.0) is a milestone, set by hand.
         public static string BumpPatch(string v)
         {
             var parts = (v ?? "").Split('.');
             if (parts.Length == 3 && int.TryParse(parts[2], out int patch))
+            {
+                if (patch >= 99)
+                {
+                    Debug.LogWarning("[Zappar CLI] Version " + v + " is the last patch of this series; set the next milestone version by hand.");
+                    return v;
+                }
                 return parts[0] + "." + parts[1] + "." + (patch + 1);
+            }
             return v;
         }
     }

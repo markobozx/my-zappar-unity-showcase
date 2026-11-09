@@ -28,6 +28,12 @@ namespace Showcase
 
         void Update()
         {
+            // The scan screen owns the screen until a target is found.
+            if (ShowcaseRig.Instance != null && ShowcaseRig.Instance.IsScanning)
+            {
+                m_pressed = false;
+                return;
+            }
             if (Input.touchCount >= 2)
             {
                 HandlePinch();
