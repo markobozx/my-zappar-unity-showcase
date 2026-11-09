@@ -4,16 +4,24 @@ using UnityEngine.UI;
 
 namespace Showcase
 {
-    // The first thing a visitor sees: the live camera feed with "Find this image" and a card per
-    // target (its picture + what it opens). Leaves for good once the rig leaves Scanning, i.e. when a
-    // target is found or the visitor taps "Explore without the image".
+    // The first thing a visitor sees: the live camera feed with "Find this image" and a card with the
+    // target's picture and what it opens. With several targets the card is a slideshow (cross-fading
+    // every few seconds, dots underneath, tap to skip). Leaves for good once the rig leaves Scanning,
+    // i.e. when a target is found or the visitor taps "Explore without AR".
     public class TargetScanScreen : MonoBehaviour
     {
+        private const float SlideSeconds = 3.2f;
+        private const float FadeSeconds = 0.45f;
+
         private GameObject m_root;
-        private readonly List<(Text label, ShowcaseTarget target)> m_cardLabels = new List<(Text, ShowcaseTarget)>();
-        private readonly List<RectTransform> m_scanLines = new List<RectTransform>();
-        private readonly List<Image> m_frames = new List<Image>();
-        private Text m_status;
+        private readonly List<ShowcaseTarget> m_targets = new List<ShowcaseTarget>();
+        private readonly List<CanvasGroup> m_slides = new List<CanvasGroup>();
+        private readonly List<Image> m_dots = new List<Image>();
+        private RectTransform m_scanLine;
+        private Image m_frame;
+        private Text m_label, m_status;
+        private int m_slide;
+        private float m_slideTime;
 
         void Start()
         {
@@ -61,26 +69,10 @@ namespace Showcase
             var sub = Ui.Label(header.transform, "Point your camera at it to start the AR experience", 36, new Color(1f, 1f, 1f, 0.85f), TextAnchor.MiddleCenter, FontStyle.Normal, "Subtitle");
             Ui.Place(sub.rectTransform, new Vector2(0.5f, 0f), new Vector2(920, 100), new Vector2(0, 22));
 
-            var targets = ShowcaseTargets.Instance != null ? ShowcaseTargets.Instance.Targets : new List<ShowcaseTarget>();
-            title.text = targets.Count > 1 ? "Find one of these images" : "Find this image";
-
-            // One card per target, side by side, centred a little above the middle of the screen.
-            int n = Mathf.Max(1, targets.Count);
-            int cols = Mathf.Min(n, 3);
-            int rows = Mathf.CeilToInt(n / (float)cols);
-            float gap = 30f;
-            float cardW = Mathf.Min(760f, (980f - gap * (cols - 1)) / cols);
-            float imageH = cardW * 0.62f;
-            float cardH = imageH + (cols == 1 ? 130f : 110f);
-            float gridH = rows * cardH + (rows - 1) * gap;
-            for (int i = 0; i < targets.Count; i++)
-            {
-                int r = i / cols, c = i % cols;
-                int inRow = Mathf.Min(cols, targets.Count - r * cols);
-                float x = (c - (inRow - 1) * 0.5f) * (cardW + gap);
-                float y = 120f + gridH * 0.5f - cardH * 0.5f - r * (cardH + gap);
-                BuildCard(root, targets[i], new Vector2(x, y), new Vector2(cardW, cardH), imageH, cols == 1 ? 40 : 30);
-            }
+            if (ShowcaseTargets.Instance != null)
+                m_targets.AddRange(ShowcaseTargets.Instance.Targets);
+            title.text = m_targets.Count > 1 ? "Find one of these images" : "Find this image";
+            BuildCard(root);
 
             m_status = Ui.Label(root, "", 38, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold, "Status");
             Ui.Place(m_status.rectTransform, new Vector2(0.5f, 0f), new Vector2(900, 70), new Vector2(0, 330));
@@ -95,31 +87,42 @@ namespace Showcase
             RefreshLabels();
         }
 
-        private void BuildCard(Transform root, ShowcaseTarget target, Vector2 pos, Vector2 size, float imageH, int fontSize)
+        private void BuildCard(Transform root)
         {
-            var card = Ui.Round(Ui.Panel(root, new Color(1f, 0.98f, 0.95f, 0.95f), "Card " + target.Id), 36f);
-            Ui.Place(card.rectTransform, new Vector2(0.5f, 0.5f), size, pos);
+            const float cardW = 900f, imageH = 560f;
+            bool slideshow = m_targets.Count > 1;
+            float cardH = imageH + (slideshow ? 190f : 140f);
+            var card = Ui.Round(Ui.Panel(root, new Color(1f, 0.98f, 0.95f, 0.95f), "Card"), 40f);
+            Ui.Place(card.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(cardW, cardH), new Vector2(0, 110));
 
-            var frame = Ui.Round(Ui.Panel(card.transform, Ui.Accent, "Frame"), 26f);
-            Ui.Place(frame.rectTransform, new Vector2(0.5f, 1f), new Vector2(size.x - 28f, imageH), new Vector2(0, -14));
-            m_frames.Add(frame);
+            m_frame = Ui.Round(Ui.Panel(card.transform, Ui.Accent, "Frame"), 28f);
+            Ui.Place(m_frame.rectTransform, new Vector2(0.5f, 1f), new Vector2(cardW - 32f, imageH), new Vector2(0, -16));
 
-            var holder = Ui.Rect("Image", frame.transform);
+            var holder = Ui.Rect("Images", m_frame.transform);
             Ui.Stretch(holder, 10, 10, 10, 10);
             holder.gameObject.AddComponent<RectMask2D>();
-            if (target.Image != null)
+            foreach (var target in m_targets)
             {
-                var img = Ui.Rect("Picture", holder).gameObject.AddComponent<RawImage>();
-                img.texture = target.Image;
-                img.raycastTarget = false;
-                var fit = img.gameObject.AddComponent<AspectRatioFitter>();
-                fit.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
-                fit.aspectRatio = target.Image.width / (float)Mathf.Max(1, target.Image.height);
-            }
-            else
-            {
-                var missing = Ui.Label(holder, target.Id, 32, Color.white);
-                Ui.Stretch(missing.rectTransform);
+                var slide = Ui.Rect("Slide " + target.Id, holder);
+                Ui.Stretch(slide);
+                var group = slide.gameObject.AddComponent<CanvasGroup>();
+                group.blocksRaycasts = false;
+                group.alpha = m_slides.Count == 0 ? 1f : 0f;
+                m_slides.Add(group);
+                if (target.Image != null)
+                {
+                    var img = Ui.Rect("Picture", slide).gameObject.AddComponent<RawImage>();
+                    img.texture = target.Image;
+                    img.raycastTarget = false;
+                    var fit = img.gameObject.AddComponent<AspectRatioFitter>();
+                    fit.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
+                    fit.aspectRatio = target.Image.width / (float)Mathf.Max(1, target.Image.height);
+                }
+                else
+                {
+                    var missing = Ui.Label(slide, target.Id, 40, Color.white);
+                    Ui.Stretch(missing.rectTransform);
+                }
             }
 
             // A bright line sweeping over the picture says "looking for this".
@@ -127,20 +130,48 @@ namespace Showcase
             line.rectTransform.anchorMin = new Vector2(0f, 0.5f);
             line.rectTransform.anchorMax = new Vector2(1f, 0.5f);
             line.rectTransform.sizeDelta = new Vector2(0f, 8f);
-            m_scanLines.Add(line.rectTransform);
+            m_scanLine = line.rectTransform;
 
-            var label = Ui.Label(card.transform, "", fontSize, Ui.Ink, TextAnchor.MiddleCenter, FontStyle.Bold, "Opens");
-            Ui.Place(label.rectTransform, new Vector2(0.5f, 0f), new Vector2(size.x - 30f, size.y - imageH - 34f), new Vector2(0, 10));
-            label.resizeTextForBestFit = true;
-            label.resizeTextMinSize = 20;
-            label.resizeTextMaxSize = fontSize;
-            m_cardLabels.Add((label, target));
+            m_label = Ui.Label(card.transform, "", 40, Ui.Ink, TextAnchor.MiddleCenter, FontStyle.Bold, "Opens");
+            Ui.Place(m_label.rectTransform, new Vector2(0.5f, 0f), new Vector2(cardW - 40f, 90f), new Vector2(0, slideshow ? 74f : 24f));
+            m_label.resizeTextForBestFit = true;
+            m_label.resizeTextMinSize = 24;
+            m_label.resizeTextMaxSize = 40;
+
+            if (!slideshow)
+                return;
+            // Dots: which picture is showing; tapping the card skips to the next one.
+            var dots = Ui.Rect("Dots", card.transform);
+            Ui.Place(dots, new Vector2(0.5f, 0f), new Vector2(cardW, 40f), new Vector2(0, 26f));
+            for (int i = 0; i < m_targets.Count; i++)
+            {
+                var dot = Ui.Round(Ui.Panel(dots, Ui.Muted, "Dot " + i), 12f);
+                Ui.Place(dot.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(24f, 24f), new Vector2((i - (m_targets.Count - 1) * 0.5f) * 44f, 0f));
+                m_dots.Add(dot);
+            }
+            card.raycastTarget = true;
+            var skip = card.gameObject.AddComponent<Button>();
+            skip.transition = Selectable.Transition.None;
+            skip.onClick.AddListener(() => ShowSlide(m_slide + 1));
+        }
+
+        private void ShowSlide(int index)
+        {
+            if (m_targets.Count == 0)
+                return;
+            m_slide = (index % m_targets.Count + m_targets.Count) % m_targets.Count;
+            m_slideTime = 0f;
+            RefreshLabels();
         }
 
         private void RefreshLabels()
         {
-            foreach (var (label, target) in m_cardLabels)
-                label.text = "Opens: " + ShowcaseTargets.TitleOf(target.Experience);
+            if (m_label == null || m_targets.Count == 0)
+                return;
+            var target = m_targets[m_slide];
+            m_label.text = (m_targets.Count > 1 ? (m_slide + 1) + "/" + m_targets.Count + "  ·  " : "") + "Opens: " + ShowcaseTargets.TitleOf(target.Experience);
+            for (int i = 0; i < m_dots.Count; i++)
+                m_dots[i].color = i == m_slide ? Ui.Accent : new Color(Ui.Muted.r, Ui.Muted.g, Ui.Muted.b, 0.45f);
         }
 
         void Update()
@@ -148,16 +179,25 @@ namespace Showcase
             if (m_root == null || !m_root.activeSelf)
                 return;
             float t = Time.time;
-            foreach (var line in m_scanLines)
+            if (m_scanLine != null)
             {
-                float h = ((RectTransform)line.parent).rect.height;
-                line.anchoredPosition = new Vector2(0f, Mathf.Sin(t * 1.6f) * h * 0.46f);
+                float h = ((RectTransform)m_scanLine.parent).rect.height;
+                m_scanLine.anchoredPosition = new Vector2(0f, Mathf.Sin(t * 1.6f) * h * 0.46f);
             }
-            float glow = 0.6f + 0.4f * Mathf.Sin(t * 4f);
-            foreach (var f in m_frames)
-                f.color = Color.Lerp(Ui.Accent2, Ui.Accent, glow);
+            if (m_frame != null)
+                m_frame.color = Color.Lerp(Ui.Accent2, Ui.Accent, 0.6f + 0.4f * Mathf.Sin(t * 4f));
             if (m_status != null)
                 m_status.text = "Scanning" + new string('.', 1 + (int)(t * 2f) % 3);
+
+            if (m_slides.Count > 1)
+            {
+                m_slideTime += Time.deltaTime;
+                if (m_slideTime >= SlideSeconds)
+                    ShowSlide(m_slide + 1);
+                float step = Time.deltaTime / FadeSeconds;
+                for (int i = 0; i < m_slides.Count; i++)
+                    m_slides[i].alpha = Mathf.MoveTowards(m_slides[i].alpha, i == m_slide ? 1f : 0f, step);
+            }
         }
     }
 }

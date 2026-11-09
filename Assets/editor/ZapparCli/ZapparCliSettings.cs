@@ -20,6 +20,12 @@ namespace ZapparCliTools
         public bool crossOriginIsolation = false;
         public string buildPath = "Builds/WebGL";
         public string targetsFolder = "Assets/StreamingAssets";
+        // Source images of the targets (<id>.png next to StreamingAssets/<id>.zpt); the start screen shows them.
+        public string targetImagesFolder = "Assets/Showcase/Targets";
+        // Images dropped into targetImagesFolder are trained automatically (interactive Editor only).
+        public bool autoTrainNewImages = true;
+        // Target ids the scene was last built with; differs from the trained targets on disk -> rebuild needed.
+        public string[] builtTargets = new string[0];
         public string zapworksUrl = "https://my.zap.works/";
 
         static ZapparCliSettings s_instance;

@@ -24,6 +24,8 @@ namespace Showcase
         [Tooltip("JSON with {defaultExperience, targets:[{id, experience}]}; empty = no remote config.")]
         [SerializeField] private string m_remoteConfigUrl = "";
         [SerializeField] private float m_remoteTimeout = 6f;
+        [Tooltip("Project-relative copy of the remote JSON; the Editor reads this instead, so local edits show before they are pushed.")]
+        [SerializeField] private string m_localConfigFile = "";
 
         private bool[] m_visible;
         private Zappar.ZapparCamera m_zapparCamera;
@@ -45,6 +47,13 @@ namespace Showcase
             var rig = ShowcaseRig.Instance;
             if (rig != null && rig.ArCamera != null)
                 m_zapparCamera = rig.ArCamera.GetComponent<Zappar.ZapparCamera>();
+#if UNITY_EDITOR
+            if (!string.IsNullOrEmpty(m_localConfigFile) && System.IO.File.Exists(m_localConfigFile))
+            {
+                ApplyJson(System.IO.File.ReadAllText(m_localConfigFile), "local");
+                yield break;
+            }
+#endif
             if (!string.IsNullOrEmpty(m_remoteConfigUrl))
                 yield return FetchRemoteConfig();
         }
@@ -57,10 +66,11 @@ namespace Showcase
 
 #if UNITY_EDITOR
         // Scene builder only.
-        public void Configure(List<ShowcaseTarget> targets, string remoteConfigUrl)
+        public void Configure(List<ShowcaseTarget> targets, string remoteConfigUrl, string localConfigFile)
         {
             m_targets = targets;
             m_remoteConfigUrl = remoteConfigUrl;
+            m_localConfigFile = localConfigFile;
         }
 #endif
 
@@ -166,18 +176,23 @@ namespace Showcase
                     Debug.LogWarning("[Showcase] Remote config not loaded (" + req.error + "), using built-in mapping");
                     yield break;
                 }
-                ShowcaseRemoteConfig config = null;
-                try { config = JsonUtility.FromJson<ShowcaseRemoteConfig>(req.downloadHandler.text); }
-                catch (Exception e) { Debug.LogWarning("[Showcase] Remote config is not valid JSON: " + e.Message); }
-                if (config == null)
-                    yield break;
-                Apply(config);
-                ConfigSource = "remote";
-                // The URL is the most specific instruction, so it still wins over the remote file.
-                ApplyUrlOverrides();
-                Debug.Log("[Showcase] Remote config applied: " + Describe());
-                ConfigChanged?.Invoke();
+                ApplyJson(req.downloadHandler.text, "remote");
             }
+        }
+
+        private void ApplyJson(string json, string source)
+        {
+            ShowcaseRemoteConfig config = null;
+            try { config = JsonUtility.FromJson<ShowcaseRemoteConfig>(json); }
+            catch (Exception e) { Debug.LogWarning("[Showcase] " + source + " config is not valid JSON: " + e.Message); }
+            if (config == null)
+                return;
+            Apply(config);
+            ConfigSource = source;
+            // The URL is the most specific instruction, so it still wins over the config file.
+            ApplyUrlOverrides();
+            Debug.Log("[Showcase] " + source + " config applied: " + Describe());
+            ConfigChanged?.Invoke();
         }
 
         public void Apply(ShowcaseRemoteConfig config)

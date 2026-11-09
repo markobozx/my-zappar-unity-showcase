@@ -53,6 +53,6 @@ if [ $code -eq 143 ]; then echo "KILLED: Unity ran longer than 15 minutes"; fi
 
 grep -E "error CS[0-9]+" "$LOG" | sed 's/^.*Assets/Assets/' | sort -u | head -30
 if grep -qE "error CS[0-9]+" "$LOG"; then echo "COMPILE ERRORS (see $LOG)"; exit 2; fi
-grep -E "\[SHOWCASE[A-Z-]*\]|\[SELFTEST\]|\[FLATKIT\]|NullReferenceException|Exception:|ERROR" "$LOG" | grep -v "ErrorCheck\|Couldn't open" | cut -c1-300 | head -60
+grep -E "\[ZAPPAR\]|\[SHOWCASE[A-Z-]*\]|\[SELFTEST\]|\[FLATKIT\]|NullReferenceException|Exception:|ERROR" "$LOG" | grep -v "ErrorCheck\|Couldn't open" | cut -c1-300 | head -60
 echo "Unity exit code $code (log: $LOG)"
 exit $code

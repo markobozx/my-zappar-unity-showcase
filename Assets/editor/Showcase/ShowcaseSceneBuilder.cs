@@ -23,10 +23,10 @@ namespace Showcase.EditorTools
         public const string SourceScene = "Assets/Scenes/URP Basic.unity";
         public const string ScenePath = "Assets/Scenes/Showcase.unity";
         const string FxLibraryPath = "Assets/Showcase/ShowcaseFxLibrary.asset";
-        // A target = StreamingAssets/<id>.zpt (train it in Zappar > ZapWorks CLI) + an image with the same
-        // name here, shown on the scan screen.
-        public const string TargetImagesFolder = "Assets/Showcase/Targets";
-        const string ZptFolder = "Assets/StreamingAssets";
+        // A target = <targetsFolder>/<id>.zpt + <targetImagesFolder>/<id>.png (folders from the Zappar CLI
+        // settings; ZapparTargets trains and places them), shown on the scan screen.
+        static string TargetImagesFolder => ZapparCliTools.ZapparCliSettings.Instance.targetImagesFolder;
+        static string ZptFolder => ZapparCliTools.ZapparCliSettings.Instance.targetsFolder;
         // Committed in the repo; the built app re-reads it from GitHub at startup, so editing it on
         // github.com changes which experience each target opens without a new build.
         public const string RemoteConfigFile = "RemoteConfig/showcase-config.json";
@@ -283,7 +283,7 @@ namespace Showcase.EditorTools
             if (targets.Count > 4) Log("WARNING: " + targets.Count + " targets: every tracker runs each frame, so older phones may slow down");
 
             var router = rigGo.AddComponent<ShowcaseTargets>();
-            router.Configure(targets, RemoteConfigUrl);
+            router.Configure(targets, RemoteConfigUrl, RemoteConfigFile);
             for (int i = 0; i < targets.Count; i++)
             {
                 var t = targets[i].Tracker;
@@ -301,6 +301,7 @@ namespace Showcase.EditorTools
             if (content.parent != targets[0].Tracker.transform) content.SetParent(targets[0].Tracker.transform, false);
             var zcam = arCam != null ? arCam.GetComponent<Zappar.ZapparCamera>() : null;
             if (zcam != null) { zcam.AnchorOrigin = targets[0].Tracker; EditorUtility.SetDirty(zcam); }
+            ZapparCliTools.ZapparTargets.RecordBuilt(targets.Select(t => t.Id));
             Log("Targets: " + string.Join(", ", targets.Select(t => t.Id + "→" + t.Experience)));
         }
 

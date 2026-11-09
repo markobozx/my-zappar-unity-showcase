@@ -80,19 +80,19 @@ namespace ZapparCliTools
             return zipPath;
         }
 
-        public static void BuildRelease()
+        // Build + zip + limit check + version bump. Returns the zip path, or null with `message` saying why.
+        public static string Release(string version, out string message)
         {
             var settings = ZapparCliSettings.Instance;
-            string version = Arg("-releaseVersion") ?? settings.version;
+            version = string.IsNullOrEmpty(version) ? settings.version : version;
             Log("Building v" + version + " to " + settings.buildPath);
-            var report = Build(settings.buildPath, version);
-            var s = report.summary;
+            var s = Build(settings.buildPath, version).summary;
             Log("Build " + s.result + ", " + (s.totalSize / 1048576f).ToString("0.0") + " MB uncompressed, " + s.totalErrors + " errors");
-            if (s.result != BuildResult.Succeeded) { EditorApplication.Exit(1); return; }
+            if (s.result != BuildResult.Succeeded) { message = "Build " + s.result + " (" + s.totalErrors + " errors)"; return null; }
 
-            string zip = Zip(settings.buildPath, version, out string message);
+            string zip = Zip(settings.buildPath, version, out message);
             Log(message);
-            if (zip == null) { EditorApplication.Exit(1); return; }
+            if (zip == null) return null;
             Log("Release ready: " + zip);
             if (settings.autoBumpVersion && version == settings.version)
             {
@@ -100,6 +100,13 @@ namespace ZapparCliTools
                 settings.Save();
                 Log("Next version: " + settings.version);
             }
+            return zip;
+        }
+
+        // Batch entry point; exit code 1 on failure.
+        public static void BuildRelease()
+        {
+            if (Release(Arg("-releaseVersion"), out _) == null) EditorApplication.Exit(1);
         }
 
         static string Arg(string name)

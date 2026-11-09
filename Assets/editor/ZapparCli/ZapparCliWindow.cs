@@ -62,6 +62,7 @@ namespace ZapparCliTools
             // A domain reload would orphan child processes (serve keeps running and holds the port).
             AssemblyReloadEvents.beforeAssemblyReload += StopAll;
             EditorApplication.quitting += StopAll;
+            ZapparTargets.Changed += Repaint;
             if (string.IsNullOrEmpty(m_cliVersion)) EditorApplication.delayCall += CheckCli;
         }
 
@@ -69,6 +70,7 @@ namespace ZapparCliTools
         {
             AssemblyReloadEvents.beforeAssemblyReload -= StopAll;
             EditorApplication.quitting -= StopAll;
+            ZapparTargets.Changed -= Repaint;
             StopAll();
         }
 
@@ -265,8 +267,11 @@ setTimeout(() => { console.log('SIGNIN_TIMEOUT'); process.exit(2); }, 180000);
 
         void DrawTargets()
         {
-            EditorGUILayout.LabelField("Train image targets", EditorStyles.boldLabel);
-            EditorGUILayout.HelpBox("Drag images (PNG/JPG) from the Project window or Finder into the box, or select textures and press 'Add selection'. Training writes <name>.zpt into " + Settings.targetsFolder + ".", MessageType.None);
+            DrawTargetStatus();
+
+            EditorGUILayout.Space(10);
+            EditorGUILayout.LabelField("Add image targets", EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox("Drag images (PNG/JPG) from the Project window or Finder into the box, or select textures and press 'Add selection'. Train copies each image into " + Settings.targetImagesFolder + " and writes <id>.zpt into " + Settings.targetsFolder + "; then rebuild the scene above." + (Settings.autoTrainNewImages ? " Images dropped straight into " + Settings.targetImagesFolder + " are trained automatically." : ""), MessageType.None);
 
             var drop = GUILayoutUtility.GetRect(0, 40, GUILayout.ExpandWidth(true));
             GUI.Box(drop, "Drop images here", EditorStyles.helpBox);
@@ -314,16 +319,42 @@ setTimeout(() => { console.log('SIGNIN_TIMEOUT'); process.exit(2); }, 180000);
             if (GUILayout.Button("Train all (" + m_images.Count + ")") && m_images.Count > 0)
                 foreach (var img in m_images.Where(File.Exists).ToList()) Enqueue(() => Train(img));
 
-            EditorGUILayout.Space(10);
-            EditorGUILayout.LabelField("Targets in " + Settings.targetsFolder, EditorStyles.boldLabel);
-            if (!Directory.Exists(Settings.targetsFolder)) { EditorGUILayout.LabelField("(folder doesn't exist yet)"); return; }
-            foreach (var zpt in Directory.GetFiles(Settings.targetsFolder, "*.zpt").OrderBy(f => f))
+        }
+
+        // What the project has: every target image, whether it is trained and whether the scene has it.
+        void DrawTargetStatus()
+        {
+            EditorGUILayout.LabelField("Targets in this project", EditorStyles.boldLabel);
+            var targets = ZapparTargets.Scan();
+            if (targets.Count == 0) EditorGUILayout.LabelField("(no images in " + Settings.targetImagesFolder + " yet)");
+            foreach (var t in targets)
             {
                 using (new EditorGUILayout.HorizontalScope())
                 {
-                    GUILayout.Label(Path.GetFileName(zpt), GUILayout.MinWidth(120));
-                    if (GUILayout.Button("Add tracking target to scene", GUILayout.Width(190))) CreateTrackingTarget(Path.GetFileName(zpt));
-                    if (GUILayout.Button("Show", GUILayout.Width(50))) EditorUtility.RevealInFinder(zpt);
+                    GUILayout.Label(t.Id, GUILayout.MinWidth(120));
+                    GUILayout.Label(t.Trained ? (t.Built ? "in scene" : "trained, not in scene") : "not trained", EditorStyles.miniLabel, GUILayout.Width(130));
+                    using (new EditorGUI.DisabledScope(Busy))
+                        if (GUILayout.Button(t.Trained ? "Retrain" : "Train", GUILayout.Width(64))) { var p = t.ImagePath; Enqueue(() => Train(p)); }
+                    if (GUILayout.Button("Show", GUILayout.Width(50))) EditorUtility.RevealInFinder(t.ImagePath);
+                }
+            }
+            bool needed = ZapparTargets.RebuildNeeded(out string reason);
+            if (needed) EditorGUILayout.HelpBox("Targets changed (" + reason + "). Rebuild the scene so they get trackers and show on the start screen.", MessageType.Warning);
+            var old = GUI.backgroundColor;
+            if (needed) GUI.backgroundColor = new Color(1f, 0.75f, 0.3f);
+            using (new EditorGUI.DisabledScope(!needed || Busy))
+                if (GUILayout.Button(needed ? "Rebuild scene for targets" : "Scene is up to date", GUILayout.Height(30)))
+                    EditorApplication.delayCall += () => AddLog(ZapparTargets.RebuildScene());
+            GUI.backgroundColor = old;
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                EditorGUI.BeginChangeCheck();
+                Settings.autoTrainNewImages = EditorGUILayout.ToggleLeft(new GUIContent("Auto-train new images", "Train images dropped into " + Settings.targetImagesFolder + " right away."), Settings.autoTrainNewImages);
+                if (EditorGUI.EndChangeCheck()) Settings.Save();
+                if (GUILayout.Button("Open folder", GUILayout.Width(100)))
+                {
+                    Directory.CreateDirectory(Settings.targetImagesFolder);
+                    EditorUtility.RevealInFinder(Settings.targetImagesFolder);
                 }
             }
         }
@@ -355,26 +386,23 @@ setTimeout(() => { console.log('SIGNIN_TIMEOUT'); process.exit(2); }, 180000);
             if (!m_images.Contains(full)) m_images.Add(full);
         }
 
-        string ZptPathFor(string image) => Path.Combine(Settings.targetsFolder, Path.GetFileNameWithoutExtension(image) + ".zpt");
+        string ZptPathFor(string image) => ZapparTargets.ZptPathFor(ZapparTargets.IdFor(image));
 
+        // Copies the image into the project's target images folder, then trains it with the options above.
         void Train(string image)
         {
-            Directory.CreateDirectory(Settings.targetsFolder);
-            string outPath = Path.GetFullPath(ZptPathFor(image));
-            var args = new List<string> { "train", Q(image), "--output", Q(outPath) };
-            args.Add(m_includePreview ? "--include-preview" : "--exclude-preview");
-            if (m_dpi > 0) args.Add("--dpi=" + m_dpi);
-            if (m_curved)
+            string dest;
+            try { dest = ZapparTargets.ImportImage(image); }
+            catch (Exception e) { AddLog("Can't use " + image + ": " + e.Message); RunNextQueued(); return; }
+            string zpt = ZapparTargets.ZptPathFor(Path.GetFileNameWithoutExtension(dest));
+            var options = new ZapparTargets.TrainOptions { IncludePreview = m_includePreview, Dpi = m_dpi, Curved = m_curved, Radius = m_radius, TopRadius = m_topRadius, BottomRadius = m_bottomRadius };
+            ZapparTargets.TrainingNow.Add(dest);
+            Run("Training " + Path.GetFileName(dest), ZapparTargets.TrainArgs(dest, zpt, options), (code, output) =>
             {
-                args.Add("--curved");
-                if (!string.IsNullOrEmpty(m_radius)) args.Add("--radius=" + m_radius);
-                if (!string.IsNullOrEmpty(m_topRadius)) args.Add("--top-radius=" + m_topRadius);
-                if (!string.IsNullOrEmpty(m_bottomRadius)) args.Add("--bottom-radius=" + m_bottomRadius);
-            }
-            Run("Training " + Path.GetFileName(image), string.Join(" ", args), (code, output) =>
-            {
+                ZapparTargets.TrainingNow.Remove(dest);
                 AssetDatabase.Refresh();
-                AddLog(File.Exists(outPath) && code == 0 ? "Trained → " + ZptPathFor(image) : "Training failed for " + Path.GetFileName(image));
+                AddLog(File.Exists(zpt) && code == 0 ? "Trained → " + zpt + (ZapparTargets.RebuildNeeded(out _) ? "  ·  press 'Rebuild scene for targets'" : "") : "Training failed for " + Path.GetFileName(dest));
+                ZapparTargets.NotifyChanged();
             });
         }
 
