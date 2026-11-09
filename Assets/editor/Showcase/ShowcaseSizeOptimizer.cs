@@ -58,6 +58,21 @@ namespace Showcase.EditorTools
                 }
             }
             Log("Scene depends on " + deps.Length + " assets; capped " + textures + " textures for WebGL, compressed " + models + " models");
+
+            // The Unity splash logo alone is ~2.7 MB of the build; Unity 6 allows turning it off.
+            PlayerSettings.SplashScreen.show = false;
+            PlayerSettings.SplashScreen.showUnityLogo = false;
+            PlayerSettings.SplashScreen.logos = new PlayerSettings.SplashScreenLogo[0];
+            // URP's post-process data pulls film-grain/SMAA textures and UberPost (~3 MB). The showcase
+            // uses no URP post-processing (Flat Kit looks are separate renderer features), so drop it.
+            var renderer = AssetDatabase.LoadAssetAtPath<UnityEngine.Rendering.Universal.UniversalRendererData>("Assets/Settings/URP-Showcase_Renderer.asset");
+            if (renderer != null && renderer.postProcessData != null)
+            {
+                renderer.postProcessData = null;
+                EditorUtility.SetDirty(renderer);
+            }
+            AssetDatabase.SaveAssets();
+            Log("Splash screen off; URP post-process data removed");
         }
 
         public static void BuildAndReport()
