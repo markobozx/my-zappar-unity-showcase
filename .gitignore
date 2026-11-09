@@ -83,3 +83,7 @@ Project/Library
 build
 build2
 webgl
+
+# Build/runtime byproducts (Burst WebGL output, Zappar editor log)
+/Data/
+zcv.log

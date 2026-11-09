@@ -832,7 +832,11 @@ PlayerSettings:
   webGLCloseOnQuit: 0
   webWasm2023: 1
   webEnableSubmoduleStrippingCompatibility: 0
-  scriptingDefineSymbols: {}
+  scriptingDefineSymbols:
+    Android: ZAPPAR_SRP
+    Standalone: ZAPPAR_SRP
+    WebGL: ZAPPAR_SRP
+    iPhone: ZAPPAR_SRP
   additionalCompilerArguments: {}
   platformArchitecture: {}
   scriptingBackend:
