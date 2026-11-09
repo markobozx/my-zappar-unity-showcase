@@ -287,6 +287,30 @@ namespace Showcase.Experiences.Looks
             ShowResultPanel();
         }
 
+        // Extra play-test screenshot per look (editor only; the harness only shoots start/end).
+        private static void DebugShot(string name)
+        {
+#if UNITY_EDITOR
+            Camera cam = ShowcaseRig.ActiveCamera;
+            if (cam == null) return;
+            string dir = "Builds/Preview/looks";
+            System.IO.Directory.CreateDirectory(dir);
+            var rt = new RenderTexture(720, 1280, 24);
+            RenderTexture prev = cam.targetTexture;
+            cam.targetTexture = rt;
+            cam.Render();
+            RenderTexture.active = rt;
+            var tex = new Texture2D(rt.width, rt.height, TextureFormat.RGB24, false);
+            tex.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0);
+            tex.Apply();
+            System.IO.File.WriteAllBytes(dir + "/" + name + ".png", tex.EncodeToPNG());
+            RenderTexture.active = null;
+            cam.targetTexture = prev;
+            DestroyImmediate(rt);
+            DestroyImmediate(tex);
+#endif
+        }
+
         public override IEnumerator SelfTest()
         {
             ResetGame();
@@ -318,6 +342,7 @@ namespace Showcase.Experiences.Looks
                     if (s.gameObject.activeSelf != expected)
                         Debug.LogError("[SELFTEST] look " + LookNames[look] + ": secret '" + s.Title + "' visible=" + s.gameObject.activeSelf + ", expected " + expected);
                 }
+                DebugShot("play-look-" + look);
                 LookSecret secret = SecretFor(look);
                 if (secret == null) { Debug.LogError("[SELFTEST] no secret for look " + look); continue; }
                 // A secret of another look must not count.

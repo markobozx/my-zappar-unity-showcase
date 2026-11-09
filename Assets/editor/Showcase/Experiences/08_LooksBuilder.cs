@@ -50,7 +50,7 @@ namespace Showcase.EditorTools.Experiences
             exhibits.Add(PlinthExhibit(ctx, root, exp, "CR_Radio", new Vector3(1.15f, 0f, 0.55f), 0.24f, 0.2f, -15f,
                 "Space Radio", "Cosmic Retro props\n60s space-age, toon converted"));
             exhibits.Add(FloorExhibit(ctx, root, exp, "Couch_05", new Vector3(-1.1f, 0f, -0.18f), 0.56f, 35f, true, 0.6f,
-                "Cosy Couch", "ithappy Cute Furniture\nSoft pastel toon ramp"));
+                "Lounge Daybed", "ithappy Cute Furniture\nSoft pastel toon ramp"));
             exhibits.Add(FloorExhibit(ctx, root, exp, "Retro_laboratory_DNA_Reactor_Tube", new Vector3(1.2f, 0f, -0.2f), 0.5f, -30f, false, 0.48f,
                 "Reactor Tube", "Cosmic Retro laboratory\nHard-edged cel highlights"));
             exhibits.Add(WallExhibit(ctx, root, exp, "SM_Prop_Sign_Flamingo_01", new Vector3(0.9f, 0.52f, 1.055f), 0.85f,

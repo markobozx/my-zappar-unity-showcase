@@ -42,7 +42,7 @@ namespace Showcase.EditorTools.Experiences
             ctx.Floor(root, new Vector2(3.1f, 2.1f), FloorColor);
             ctx.Primitive(PrimitiveType.Cube, "Back Wall", root, new Vector3(0f, 0.5f, 1.02f), new Vector3(3.1f, 1.0f, 0.06f), WallColor);
             ctx.Primitive(PrimitiveType.Cube, "Wall Neon Strip", root, new Vector3(0f, 0.985f, 0.985f), new Vector3(3.1f, 0.025f, 0.02f), new Color(1f, 0.25f, 0.75f), false);
-            ctx.Primitive(PrimitiveType.Cube, "DJ Riser", root, new Vector3(0f, 0.03f, 0.72f), new Vector3(1.0f, 0.06f, 0.5f), RiserColor, false);
+            ctx.Primitive(PrimitiveType.Cube, "DJ Riser", root, new Vector3(0f, 0.03f, 0.72f), new Vector3(1.66f, 0.06f, 0.5f), RiserColor, false);
 
             // ---- dance floor (tiles animate in time with the beat) ----
             var dance = new GameObject("Dance Floor").transform;
@@ -62,8 +62,7 @@ namespace Showcase.EditorTools.Experiences
             float boothTop = Top(booth);
             var speakerL = Prop("SM_Prop_Speaker_01", new Vector3(-0.64f, 0.06f, 0.74f), 0.42f, 15f);
             var speakerR = Prop("SM_Prop_Speaker_01", new Vector3(0.64f, 0.06f, 0.74f), 0.42f, -15f);
-            var disco = Prop("SM_Prop_Disco_Ball_01", new Vector3(0f, 1.0f, -0.2f), 0.14f);
-            exp.DiscoBall = disco != null ? disco.transform : null;
+            Prop("SM_Prop_DJ_Turntable_02", new Vector3(0.16f, boothTop, 0.66f), 0.16f, 0f, true);
 
             // ---- bar corner ----
             var bar = Prop("SM_Prop_Bar_01", new Vector3(1.12f, 0f, 0.5f), 0.36f);
@@ -73,7 +72,7 @@ namespace Showcase.EditorTools.Experiences
             Prop("SM_Prop_Bar_Glass_05", new Vector3(1.05f, barTop, 0.44f), 0.07f);
             Prop("SM_Prop_Stool_01", new Vector3(0.94f, 0f, 0.18f), 0.25f);
             Prop("SM_Prop_Stool_01", new Vector3(1.3f, 0f, 0.18f), 0.25f, 20f);
-            Prop("SM_Prop_Sign_Bar_01", new Vector3(1.12f, 0.55f, 0.98f), 0.42f, 0f, true);
+            Prop("SM_Prop_Sign_Bar_01", new Vector3(1.12f, 0.55f, 0.98f), 0.42f, -90f, true);
 
             // ---- lounge ----
             Prop("SM_Prop_Sofa_01", new Vector3(-1.05f, 0f, 0.62f), 0.28f);
@@ -100,7 +99,7 @@ namespace Showcase.EditorTools.Experiences
                     new Color(0.7f, 0.45f, 1f), new Vector3(1.28f, barTop, 0.52f), 30f,
                     c => ctx.Place("SM_Prop_Bracelets_01", c, Vector3.zero, 0.11f, 0f, true)),
                 Item(ctx, root, exp, "Lost Phone", "Lumo Mobile · Pulse X", "Battery at 4%.\nSomeone is frantic.", "look under the lounge table",
-                    new Color(0.3f, 0.85f, 1f), new Vector3(-0.8f, 0f, 0.06f), -35f,
+                    new Color(0.3f, 0.85f, 1f), new Vector3(-0.9f, 0f, 0.1f), -35f,
                     c => ctx.Place("SM_Prop_Cellphone_01", c, Vector3.zero, 0.11f, 0f, true)),
                 Item(ctx, root, exp, "Sunglasses", "Halo Shades · Midnight", "Sunglasses at night?\nVery on brand.", "something is on the DJ booth",
                     new Color(1f, 0.35f, 0.7f), new Vector3(-0.2f, boothTop, 0.62f), 20f,
@@ -110,10 +109,10 @@ namespace Showcase.EditorTools.Experiences
                 Item(ctx, root, exp, "Neon Fizz", "Lumo Lounge · Neon Fizz", "Yuzu, mint and a\nsplash of glow.", "the lounge table looks busy",
                     new Color(0.4f, 1f, 0.5f), new Vector3(-1.1f, tableTop, 0.22f), 0f,
                     c => ctx.Place("SM_Prop_Tiki_Cup_01", c, Vector3.zero, 0.11f)),
-                Item(ctx, root, exp, "Vinyl Record", "Orbit Records · Night Drive EP", "Limited pressing,\nonly 500 made.", "try behind the left speaker",
-                    new Color(1f, 0.3f, 0.3f), new Vector3(-0.86f, 0f, 0.8f), 25f, Record, Quaternion.Euler(12f, 0f, 0f)),
+                Item(ctx, root, exp, "Vinyl Record", "Orbit Records · Night Drive EP", "Limited pressing,\nonly 500 made.", "try beside the DJ booth",
+                    new Color(1f, 0.3f, 0.3f), new Vector3(-0.46f, 0.06f, 0.56f), 20f, Record, Quaternion.Euler(12f, 0f, 0f)),
                 Item(ctx, root, exp, "Coat-check Key", "Nova Night · Coat check #27", "Somebody's jacket\nis waiting.", "something glints by the beanbag",
-                    new Color(1f, 0.6f, 0.2f), new Vector3(-0.98f, 0f, -0.56f), 40f, Key, Quaternion.identity, Quaternion.Euler(-70f, 0f, 0f)),
+                    new Color(1f, 0.6f, 0.2f), new Vector3(-1.04f, 0f, -0.48f), 40f, Key, Quaternion.identity, Quaternion.Euler(-70f, 0f, 0f)),
                 Item(ctx, root, exp, "Party Crown", "Glitz Co. · Birthday crown", "Tonight's birthday star\nlost their crown.", "look up on the right speaker",
                     Gold, new Vector3(0.64f, speakerTop, 0.74f), 15f, Crown),
             };
@@ -287,16 +286,16 @@ namespace Showcase.EditorTools.Experiences
                 l.shadows = LightShadows.None;
                 return l;
             }
-            var flash = Make("Flashlight", LightType.Spot, new Vector3(0f, 1.7f, -1.6f), new Color(1f, 0.95f, 0.82f), 2.2f, 4.5f);
+            var flash = Make("Flashlight", LightType.Spot, new Vector3(0f, 1.7f, -1.6f), new Color(1f, 0.95f, 0.82f), 1.0f, 4.5f);
             flash.spotAngle = 30f;
             flash.innerSpotAngle = 16f;
             flash.transform.localRotation = Quaternion.LookRotation(new Vector3(0f, 0f, 0.2f) - flash.transform.localPosition);
             exp.Flashlight = flash;
             exp.ClubLights = new[]
             {
-                Make("Dance Light", LightType.Point, new Vector3(0f, 0.6f, -0.15f), new Color(1f, 0.3f, 0.8f), 0.35f, 1.1f),
-                Make("DJ Light", LightType.Point, new Vector3(0f, 0.65f, 0.45f), new Color(0.3f, 0.8f, 1f), 0.35f, 1.0f),
-                Make("Bar Light", LightType.Point, new Vector3(1.0f, 0.6f, 0.2f), new Color(1f, 0.7f, 0.3f), 0.3f, 0.9f),
+                Make("Dance Light", LightType.Point, new Vector3(0f, 0.6f, -0.15f), new Color(1f, 0.3f, 0.8f), 0.22f, 1.1f),
+                Make("DJ Light", LightType.Point, new Vector3(0f, 0.65f, 0.45f), new Color(0.3f, 0.8f, 1f), 0.25f, 1.0f),
+                Make("Bar Light", LightType.Point, new Vector3(1.0f, 0.6f, 0.2f), new Color(1f, 0.7f, 0.3f), 0.22f, 0.9f),
             };
         }
     }

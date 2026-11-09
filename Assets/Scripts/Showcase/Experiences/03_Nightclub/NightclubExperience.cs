@@ -21,7 +21,6 @@ namespace Showcase.Experiences.Nightclub
         [Header("Mood")]
         public Light Flashlight;
         public Light[] ClubLights;
-        public Transform DiscoBall;
         public Renderer[] DanceTiles;
         public Color[] DanceColors;
 
@@ -234,11 +233,10 @@ namespace Showcase.Experiences.Nightclub
             m_playing = false;
             m_endTime = Time.time;
             CloseCard();
-            Vector3 up = transform.up * transform.lossyScale.y;
             Fx.Play(FxKind.Confetti, transform.TransformPoint(new Vector3(-0.6f, 0.5f, 0f)), 1.4f);
             yield return new WaitForSeconds(0.25f);
             Fx.Play(FxKind.Confetti, transform.TransformPoint(new Vector3(0.6f, 0.5f, 0f)), 1.4f);
-            if (DiscoBall != null) Fx.Play(FxKind.Stars, DiscoBall.position - up * 0.1f, 1.2f);
+            Fx.Play(FxKind.Stars, transform.TransformPoint(new Vector3(0f, 0.55f, 0.6f)), 1.2f);
             yield return new WaitForSeconds(0.9f);
             ShowEndResult();
             m_finishRoutine = null;
@@ -285,9 +283,6 @@ namespace Showcase.Experiences.Nightclub
                 Quaternion want = Quaternion.LookRotation(AimPoint + wobble - Flashlight.transform.position, transform.up);
                 Flashlight.transform.rotation = Quaternion.Slerp(Flashlight.transform.rotation, want, 1f - Mathf.Exp(-6f * Time.deltaTime));
             }
-
-            if (DiscoBall != null)
-                DiscoBall.Rotate(0f, 40f * Time.deltaTime, 0f, Space.Self);
 
             float beat = Time.time * 2.1f;   // ~126 bpm
             if (ClubLights != null)
