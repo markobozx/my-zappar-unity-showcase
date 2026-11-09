@@ -55,6 +55,14 @@ public class BuildScript : EditorWindow {
   // Entry point for command-line builds (-executeMethod BuildScript.WebGLBatch). Output goes to
   // Builds/WebGL, which .gitignore already excludes.
   public static void WebGLBatch () {
+        var report = BuildWebGL ("Builds/WebGL");
+        if (report.summary.result != UnityEditor.Build.Reporting.BuildResult.Succeeded) {
+            EditorApplication.Exit (1);
+        }
+  }
+
+  // Shared by WebGLBatch and the Zappar CLI window.
+  public static UnityEditor.Build.Reporting.BuildReport BuildWebGL (string outputPath) {
         ImportZCV.UpdateProjectSettings ();
         PlayerSettings.SetScriptingBackend(BuildTargetGroup.WebGL, ScriptingImplementation.IL2CPP);
         PlayerSettings.stripEngineCode = true;
@@ -64,10 +72,7 @@ public class BuildScript : EditorWindow {
         PlayerSettings.WebGL.decompressionFallback = true;
         PlayerSettings.WebGL.template = "PROJECT:Zappar";
         EditorUserBuildSettings.development = false;
-        var report = BuildPipeline.BuildPlayer (GetScenes (), "Builds/WebGL", BuildTarget.WebGL, BuildOptions.None);
-        if (report.summary.result != UnityEditor.Build.Reporting.BuildResult.Succeeded) {
-            EditorApplication.Exit (1);
-        }
+        return BuildPipeline.BuildPlayer (GetScenes (), outputPath, BuildTarget.WebGL, BuildOptions.None);
   }
   static void StandaloneWindows () {
     BuildPipeline.BuildPlayer (GetScenes (), "./windows-dist/build.exe", BuildTarget.StandaloneWindows, BuildOptions.None);

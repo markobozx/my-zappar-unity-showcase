@@ -1,0 +1,9 @@
+{
+    "projectId": "2246373108288074442",
+    "version": "1.0.1",
+    "autoBumpVersion": true,
+    "crossOriginIsolation": false,
+    "buildPath": "Builds/WebGL",
+    "targetsFolder": "Assets/StreamingAssets",
+    "zapworksUrl": "https://my.zap.works/"
+}
