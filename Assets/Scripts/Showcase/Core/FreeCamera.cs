@@ -17,6 +17,8 @@ namespace Showcase
         [SerializeField] private float m_minDistance = 1.2f;
         [SerializeField] private float m_maxDistance = 8f;
         [SerializeField] private float m_smoothing = 8f;
+        [Tooltip("Stage width (World units) kept visible at the default 4.2 distance; scales with closer framings.")]
+        [SerializeField] private float m_fitWidth = 2.9f;
 
         private Vector3 m_targetFocus;
         private float m_targetDistance, m_targetYaw, m_targetPitch;
@@ -47,6 +49,12 @@ namespace Showcase
             m_targetYaw = 0f;
         }
 
+        // Jump straight to the target framing (no smoothing), e.g. after the render target changed aspect.
+        public void SnapNow()
+        {
+            Place(1f);
+        }
+
         public void Orbit(Vector2 screenDelta)
         {
             float k = 180f / Mathf.Max(Screen.height, 1);
@@ -71,13 +79,24 @@ namespace Showcase
             m_yaw = Mathf.LerpAngle(m_yaw, m_targetYaw, t);
             m_pitch = Mathf.Lerp(m_pitch, m_targetPitch, t);
 
+            // Portrait phones see a narrow horizontal slice; back off until the stage width fits.
+            Camera cam = GetComponent<Camera>();
+            float distance = m_distance;
+            if (cam != null)
+            {
+                float halfWidthTan = Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad) * Mathf.Max(cam.aspect, 0.1f);
+                // A multiplier (not a minimum) so pinch-zoom still moves closer in portrait.
+                float neededAtDefault = m_fitWidth * 0.5f / Mathf.Max(halfWidthTan, 0.01f);
+                distance = m_distance * Mathf.Max(1f, neededAtDefault / 4.2f);
+            }
+
             Transform space = m_pivotSpace;
             Vector3 focusWorld = space != null ? space.TransformPoint(m_focus) : m_focus;
             Quaternion spaceRot = space != null ? space.rotation : Quaternion.identity;
             // Yaw 0 looks from the front of the stage (-Z) toward +Z, like holding a phone over the target.
             Quaternion rot = spaceRot * Quaternion.Euler(m_pitch, m_yaw, 0f);
             float scale = space != null ? space.lossyScale.x : 1f;
-            transform.position = focusWorld - rot * Vector3.forward * (m_distance * scale);
+            transform.position = focusWorld - rot * Vector3.forward * (distance * scale);
             transform.rotation = rot;
         }
     }

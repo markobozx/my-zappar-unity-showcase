@@ -218,6 +218,12 @@ namespace Showcase.EditorTools
                     scaler.matchWidthOrHeight = 0.5f;
                 }
             }
+            // UI clicks (HUD, world cards, keypads) need exactly one EventSystem; the example scene kept
+            // it under the old canvas, which is cleared above, so make a root-level one.
+            foreach (var es in FindAll<UnityEngine.EventSystems.EventSystem>().ToList())
+                UnityEngine.Object.DestroyImmediate(es.gameObject);
+            new GameObject("EventSystem", typeof(UnityEngine.EventSystems.EventSystem), typeof(UnityEngine.EventSystems.StandaloneInputModule));
+
             Log("Rig set up: AR camera " + (arCam != null) + ", background " + (bgCam != null) + ", tracker " + (tracker != null));
         }
 

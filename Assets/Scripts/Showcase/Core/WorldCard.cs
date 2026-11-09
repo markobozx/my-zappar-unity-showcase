@@ -49,6 +49,10 @@ namespace Showcase
             Ui.Place(card.Title.rectTransform, new Vector2(0f, 1f), new Vector2(490, 70), new Vector2(28, -26));
             card.Body = Ui.Label(bg.transform, body, 34, Ui.Muted, TextAnchor.UpperLeft, FontStyle.Normal, "Body");
             Ui.Place(card.Body.rectTransform, new Vector2(0f, 1f), new Vector2(544, lines * 44 + 10), new Vector2(28, -100));
+            // Size the card from the wrapped text, not just the line breaks, so long lines never spill out.
+            float bodyHeight = Mathf.Max(lines * 44f, card.Body.preferredHeight) + 10f;
+            card.Body.rectTransform.sizeDelta = new Vector2(544, bodyHeight);
+            ((RectTransform)canvas.transform).sizeDelta = new Vector2(600, 120 + bodyHeight + (buttons.Length > 0 ? 110 : 20));
 
             var close = Ui.Button(bg.transform, "×", Ui.Muted, card.Close, 44, "Close");
             Ui.Place((RectTransform)close.transform, new Vector2(1f, 1f), new Vector2(72, 72), new Vector2(-14, -22));

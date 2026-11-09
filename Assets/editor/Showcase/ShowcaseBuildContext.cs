@@ -123,7 +123,9 @@ namespace Showcase.EditorTools
                 local.Encapsulate(toLocal.MultiplyPoint3x4(wb.min));
                 local.Encapsulate(toLocal.MultiplyPoint3x4(wb.max));
             }
-            var box = go.GetComponent<BoxCollider>() ?? go.AddComponent<BoxCollider>();
+            // Not `??`: a missing Unity component is a fake null that `??` treats as a real object.
+            var box = go.GetComponent<BoxCollider>();
+            if (box == null) box = go.AddComponent<BoxCollider>();
             if (any) { box.center = local.center; box.size = local.size * padding; }
             return box;
         }

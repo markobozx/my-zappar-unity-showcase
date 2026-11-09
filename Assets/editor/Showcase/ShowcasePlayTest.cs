@@ -116,12 +116,13 @@ namespace Showcase.EditorTools
                 case 3: // self test
                     s_selfTestDone = false;
                     var routine = Wrap(s_current.SelfTest());
-                    s_selfTest = s_current.StartCoroutine(routine);
+                    // Run on the rig, not the experience: an experience may StopAllCoroutines() while resetting.
+                    s_selfTest = ShowcaseRig.Instance.StartCoroutine(routine);
                     s_step = 4; Wait(0.2);
                     break;
 
                 case 4:
-                    if (!s_selfTestDone && s_current.isActiveAndEnabled) return;
+                    if (!s_selfTestDone) return;
                     Shot(s_current.Id, "play-selftest");
                     try { s_current.DebugComplete(); } catch (Exception e) { s_errors.Add("DebugComplete: " + e.Message); }
                     s_step = 5; Wait(1.5);
@@ -171,6 +172,9 @@ namespace Showcase.EditorTools
             var rt = new RenderTexture(720, 1280, 24);
             var prev = cam.targetTexture;
             cam.targetTexture = rt;
+            // Frame for the portrait phone-sized target rather than the batch window.
+            var free = cam.GetComponent<FreeCamera>();
+            if (free != null) { free.SnapNow(); free.SnapNow(); }
             cam.Render();
             RenderTexture.active = rt;
             var tex = new Texture2D(rt.width, rt.height, TextureFormat.RGB24, false);
