@@ -10,13 +10,17 @@ namespace Showcase.Experiences.Lab
 
         public bool Pulsing { get; set; }
 
-        private Vector3 m_capScale;
+        private Vector3 m_capScale, m_homeScale;
 
         void Awake()
         {
+            m_homeScale = transform.localScale;
             if (m_cap != null)
                 m_capScale = m_cap.localScale;
         }
+
+        // Undo a Punch tween cut short by Exit (or stacked by quick taps).
+        public void ResetScale() => transform.localScale = m_homeScale;
 
         void Update()
         {

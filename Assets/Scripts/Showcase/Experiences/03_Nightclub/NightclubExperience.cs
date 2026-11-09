@@ -29,6 +29,7 @@ namespace Showcase.Experiences.Nightclub
         private bool m_playing;
         private float m_startTime, m_endTime;
         private float m_lastWrongToast = -10f, m_lastHint = -10f;
+        private int m_lastTimerSecond = -1;
         private Vector3 m_aimLocal;   // flashlight target, local so it follows the tracked target
         private Vector3 AimPoint { get => transform.TransformPoint(m_aimLocal); set => m_aimLocal = transform.InverseTransformPoint(value); }
         private float[] m_lightBase;
@@ -70,6 +71,7 @@ namespace Showcase.Experiences.Nightclub
             m_wrongTaps = 0;
             m_lastWrongToast = m_lastHint = -10f;
             m_startTime = Time.time;
+            m_lastTimerSecond = -1;
             m_playing = true;
             m_aimLocal = new Vector3(0f, 0f, 0.2f);
             if (Flashlight != null)
@@ -260,7 +262,7 @@ namespace Showcase.Experiences.Nightclub
             if (m_finishRoutine != null) { StopCoroutine(m_finishRoutine); m_finishRoutine = null; }
             CloseCard();
             for (int i = 0; i < Items.Length; i++)
-                if (!Items[i].Found) { Items[i].Collect(ShelfSlots[m_found], true); m_found++; }
+                if (!Items[i].Found) { Items[i].Collect(ShelfSlots[Mathf.Min(m_found, ShelfSlots.Length - 1)], true); m_found++; }
             if (m_playing) { m_playing = false; m_endTime = Time.time; }
             RefreshBoard();
             UpdateScore();
@@ -273,7 +275,15 @@ namespace Showcase.Experiences.Nightclub
         void Update()
         {
             if (m_playing && Hud != null)
-                Hud.SetTimer(FormatTime(Time.time - m_startTime));
+            {
+                // Only rebuild the string when the second changes: no per-frame garbage on WebGL.
+                int second = Mathf.FloorToInt(Time.time - m_startTime);
+                if (second != m_lastTimerSecond)
+                {
+                    m_lastTimerSecond = second;
+                    Hud.SetTimer(FormatTime(second));
+                }
+            }
 
             if (Flashlight != null)
             {

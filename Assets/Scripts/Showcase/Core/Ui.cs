@@ -64,6 +64,9 @@ namespace Showcase
             var rt = Rect(name, parent);
             var img = rt.gameObject.AddComponent<Image>();
             img.color = color;
+            // Decorative by default: a raycast-target image on a world canvas swallows taps meant for
+            // 3D props drawn in front of it. Buttons and blocking panels opt back in.
+            img.raycastTarget = false;
             return img;
         }
 
@@ -87,6 +90,7 @@ namespace Showcase
         public static Button Button(Transform parent, string label, Color color, UnityAction onClick, int fontSize = 34, string name = "Button")
         {
             var img = Panel(parent, color, name);
+            img.raycastTarget = true;
             var b = img.gameObject.AddComponent<Button>();
             var colors = b.colors;
             colors.pressedColor = new Color(0.8f, 0.8f, 0.8f);

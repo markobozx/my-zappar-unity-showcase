@@ -44,10 +44,12 @@ trap 'rm -rf "$LOCK"' EXIT
 
 "$UNITY" -batchmode $GRAPHICS -projectPath "$PROJECT" -executeMethod "$METHOD" $QUIT -logFile "$LOG" "$@" >/dev/null 2>&1 &
 upid=$!
-( sleep 900; kill -TERM $upid 2>/dev/null && echo "KILLED: Unity ran longer than 15 minutes" ) &
+# Detached from our stdout so a leftover sleep can never hold a caller's pipe open.
+( sleep 900; kill -TERM $upid 2>/dev/null ) >/dev/null 2>&1 &
 watchdog=$!
 wait $upid; code=$?
-kill $watchdog 2>/dev/null; wait $watchdog 2>/dev/null
+pkill -P $watchdog 2>/dev/null; kill $watchdog 2>/dev/null; wait $watchdog 2>/dev/null
+if [ $code -eq 143 ]; then echo "KILLED: Unity ran longer than 15 minutes"; fi
 
 grep -E "error CS[0-9]+" "$LOG" | sed 's/^.*Assets/Assets/' | sort -u | head -30
 if grep -qE "error CS[0-9]+" "$LOG"; then echo "COMPILE ERRORS (see $LOG)"; exit 2; fi

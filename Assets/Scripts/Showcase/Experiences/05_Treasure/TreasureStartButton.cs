@@ -26,7 +26,8 @@ namespace Showcase.Experiences.Treasure
 
         public void OnTap(RaycastHit hit)
         {
-            if (m_owner != null)
+            // The button shrinks away over ~0.35 s; a second tap in that time must not restart the round.
+            if (m_owner != null && !m_owner.Running)
                 m_owner.StartRound();
         }
     }

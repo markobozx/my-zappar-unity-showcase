@@ -206,7 +206,7 @@ namespace Showcase.Experiences.Diner
             m_progress = 0;
             RefreshTickets();
             if (Hud != null)
-                Hud.Toast("Oops! " + DinerMenu.Info(bin.Ingredient).label + " isn't next (" + DinerMenu.Info(expected).label + " was).\nPlate reset", 1.8f);
+                Hud.Toast("Oops! Next was " + DinerMenu.Info(expected).label + "\nPlate reset", 1.8f);
         }
 
         private void CompleteOrder(Recipe recipe)

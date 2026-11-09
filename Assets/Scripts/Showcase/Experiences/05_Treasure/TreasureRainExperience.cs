@@ -80,7 +80,7 @@ namespace Showcase.Experiences.Treasure
             {
                 Hud.SetScore("");
                 Hud.SetTimer("");
-                Hud.SetHint("Tap START, then tap the falling treasure.\nAvoid the bomb crates!");
+                Hud.SetHint("Tap START, then grab the falling treasure!");
             }
         }
 
@@ -112,7 +112,7 @@ namespace Showcase.Experiences.Treasure
             }
             if (Hud != null)
             {
-                Hud.SetHint("Tap treasure fast: 3 in a row = x2\nGold 1 · Coins 2 · Gems 5 · Golden box 20 · Bomb -10");
+                Hud.SetHint("3 quick taps in a row = x2 · avoid bombs!");
                 Hud.Toast("GO! 45 seconds");
             }
             UpdateHud();
@@ -378,7 +378,11 @@ namespace Showcase.Experiences.Treasure
                 Release(m_alive[i]);
             }
             if (m_chestMouth != null) Fx.Play(FxKind.Confetti, m_chestMouth.position, 1.5f);
-            if (m_chest != null) StartCoroutine(Tween.Punch(m_chest, 0.2f, 0.4f));
+            if (m_chest != null)
+            {
+                m_chest.localScale = m_chestScale;   // a collect punch may still be mid-way
+                StartCoroutine(Tween.Punch(m_chest, 0.2f, 0.4f));
+            }
             ShowStartButton(true);
             UpdateHud();
             ShowResultPanel();

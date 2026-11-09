@@ -61,6 +61,18 @@ namespace Showcase.Experiences.Looks
             RestoreFeatures();
         }
 
+        // Quitting / unloading: the toggles live on the renderer asset (written to disk in the editor),
+        // so leave every managed full-screen look off, whatever order the global StyleSwitcher cleans up in.
+        void OnDestroy()
+        {
+            m_savedStates.Clear();
+            if (m_renderer == null)
+                return;
+            foreach (ScriptableRendererFeature f in m_renderer.rendererFeatures)
+                if (f != null && System.Array.IndexOf(ManagedFeatures, f.name) >= 0)
+                    f.SetActive(false);
+        }
+
         private void ResetGame()
         {
             if (m_finishRoutine != null) StopCoroutine(m_finishRoutine);
@@ -341,6 +353,8 @@ namespace Showcase.Experiences.Looks
                     bool expected = s.Look == look;
                     if (s.gameObject.activeSelf != expected)
                         Debug.LogError("[SELFTEST] look " + LookNames[look] + ": secret '" + s.Title + "' visible=" + s.gameObject.activeSelf + ", expected " + expected);
+                    if (expected && s.transform.localScale.sqrMagnitude < 1e-4f)
+                        Debug.LogError("[SELFTEST] secret '" + s.Title + "' is active but scaled to " + s.transform.localScale);
                 }
                 DebugShot("play-look-" + look);
                 LookSecret secret = SecretFor(look);

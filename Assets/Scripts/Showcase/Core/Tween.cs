@@ -6,17 +6,36 @@ namespace Showcase
     // Coroutine helpers for juicy feedback. Use with StartCoroutine(Tween.Punch(t)).
     public static class Tween
     {
+        // Rest scale per transform while punches run, so overlapping punches (fast taps) never
+        // capture a squashed scale as the base and leave the object deformed.
+        private static readonly System.Collections.Generic.Dictionary<Transform, (Vector3 scale, int count)> s_rest =
+            new System.Collections.Generic.Dictionary<Transform, (Vector3, int)>();
+
         public static IEnumerator Punch(Transform t, float amount = 0.18f, float time = 0.3f)
         {
-            Vector3 baseScale = t.localScale;
-            for (float a = 0f; a < 1f; a += Time.deltaTime / time)
+            if (t == null) yield break;
+            if (s_rest.TryGetValue(t, out var entry)) s_rest[t] = (entry.scale, entry.count + 1);
+            else s_rest[t] = (t.localScale, 1);
+            Vector3 baseScale = s_rest[t].scale;
+            try
             {
-                if (t == null) yield break;
-                float k = 1f + amount * Mathf.Sin(a * Mathf.PI) * (1f - a);
-                t.localScale = new Vector3(baseScale.x * k, baseScale.y / k, baseScale.z * k);
-                yield return null;
+                for (float a = 0f; a < 1f; a += Time.deltaTime / time)
+                {
+                    if (t == null) yield break;
+                    float k = 1f + amount * Mathf.Sin(a * Mathf.PI) * (1f - a);
+                    t.localScale = new Vector3(baseScale.x * k, baseScale.y / k, baseScale.z * k);
+                    yield return null;
+                }
             }
-            if (t != null) t.localScale = baseScale;
+            finally
+            {
+                // Runs on completion and when the coroutine is stopped (e.g. the experience exits).
+                if (t != null) t.localScale = baseScale;
+                if (s_rest.TryGetValue(t, out var e))
+                {
+                    if (e.count <= 1) s_rest.Remove(t); else s_rest[t] = (e.scale, e.count - 1);
+                }
+            }
         }
 
         public static IEnumerator Hop(Transform t, float height, float time = 0.4f)

@@ -18,11 +18,18 @@ namespace Showcase.Experiences.Looks
         private Vector3 m_visualPos;
         private Quaternion m_visualRot;
         private Vector3 m_scale;
+        private bool m_initialised;
 
         public Transform Visual => m_visual != null ? m_visual : transform;
 
-        void Awake()
+        void Awake() => Init();
+
+        // Secrets are built inactive, so ResetGame calls ResetPose before Awake ever ran; without this
+        // lazy init the pose was captured as zero and every secret stayed invisible (scale 0).
+        private void Init()
         {
+            if (m_initialised) return;
+            m_initialised = true;
             m_scale = transform.localScale;
             if (m_visual != null)
             {
@@ -33,6 +40,7 @@ namespace Showcase.Experiences.Looks
 
         public void ResetPose()
         {
+            Init();
             transform.localScale = m_scale;
             if (m_visual != null)
             {

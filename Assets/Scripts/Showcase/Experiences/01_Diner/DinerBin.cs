@@ -56,7 +56,10 @@ namespace Showcase.Experiences.Diner
             var canvas = Ui.WorldCanvas("Canvas", holder, new Vector2(360, 96), FrontWidth);
             m_labelBg = Ui.Panel(canvas.transform, Ui.Paper, "Background");
             Ui.Stretch(m_labelBg.rectTransform);
+            // Only the "i" button may catch UI raycasts; otherwise taps on the crate's front are eaten as UI.
+            m_labelBg.raycastTarget = false;
             var stripe = Ui.Panel(m_labelBg.transform, Ui.Accent, "Stripe");
+            stripe.raycastTarget = false;
             Ui.Place(stripe.rectTransform, new Vector2(0f, 0.5f), new Vector2(10, 96), Vector2.zero);
             var name = Ui.Label(m_labelBg.transform, DinerMenu.Info(Ingredient).label, 46, Ui.Ink, TextAnchor.MiddleLeft, FontStyle.Bold, "Name");
             Ui.Place(name.rectTransform, new Vector2(0f, 0.5f), new Vector2(260, 90), new Vector2(24, 0));

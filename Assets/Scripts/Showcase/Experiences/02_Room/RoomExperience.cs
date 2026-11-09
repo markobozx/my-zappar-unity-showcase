@@ -24,6 +24,8 @@ namespace Showcase.Experiences.Room
         private RoomSlot m_selected;
         private WorldCard m_card;
         private bool m_finished;
+        // Rest scales, so punches cut short by Exit or overlapped by quick taps can't leave things squashed.
+        private readonly Dictionary<Transform, Vector3> m_restScales = new Dictionary<Transform, Vector3>();
 
         public IReadOnlyList<RoomSlot> Slots => m_slots;
         public int SavedCount => m_slots.Count(s => s.Saved != null);
@@ -53,6 +55,8 @@ namespace Showcase.Experiences.Room
             m_finished = false;
             foreach (var s in m_slots)
                 s.ResetSlot();
+            foreach (var kv in m_restScales)
+                if (kv.Key != null) kv.Key.localScale = kv.Value;
             if (Hud != null)
                 Hud.HideResult();
             RefreshBoard();
@@ -65,7 +69,7 @@ namespace Showcase.Experiences.Room
             if (m_finished || slot == null)
                 return;
             m_selected = slot;
-            StartCoroutine(Tween.Punch(slot.transform, 0.12f));
+            StartCoroutine(Bounce(slot.transform, 0.12f));
             Fx.Play(FxKind.Sparkle, slot.transform.position + slot.transform.up * 0.15f, 0.6f);
             m_card = WorldCard.Show(slot.transform, slot.CardOffset, slot.Current.Name, CardBody(slot), 0.82f,
                 ("◄ Prev", () => Cycle(slot, -1)),
@@ -97,7 +101,7 @@ namespace Showcase.Experiences.Room
             if (m_boardCanvas != null)
             {
                 Fx.Play(FxKind.Sparkle, m_boardCanvas.position, 0.7f);
-                StartCoroutine(Tween.Punch(m_boardCanvas, 0.08f));
+                StartCoroutine(Bounce(m_boardCanvas, 0.08f));
             }
             Hud?.Toast((replaced ? "Swapped in " : "♥ Saved ") + slot.Current.Name);
             RefreshBoard();
@@ -111,7 +115,7 @@ namespace Showcase.Experiences.Room
             if (SavedCount == 0)
             {
                 Hud?.Toast("Save at least one piece first ♥");
-                if (m_finish != null) StartCoroutine(Tween.Punch(m_finish, 0.1f));
+                if (m_finish != null) StartCoroutine(Bounce(m_finish, 0.1f));
                 return;
             }
             m_finished = true;
@@ -119,11 +123,21 @@ namespace Showcase.Experiences.Room
             m_card = null;
             if (m_finish != null)
             {
-                StartCoroutine(Tween.Punch(m_finish, 0.15f));
+                StartCoroutine(Bounce(m_finish, 0.15f));
                 Fx.Play(FxKind.Confetti, m_finish.position + m_finish.up * 0.1f, 1.2f);
             }
             Fx.Play(FxKind.Stars, transform.TransformPoint(new Vector3(0f, 0.4f, 0.2f)), 1.4f);
             StartCoroutine(ShowResultSoon());
+        }
+
+        // Tween.Punch, but around the remembered rest scale instead of whatever the scale is right now.
+        private IEnumerator Bounce(Transform t, float amount)
+        {
+            if (!m_restScales.TryGetValue(t, out Vector3 rest))
+                m_restScales[t] = rest = t.localScale;
+            t.localScale = rest;
+            yield return Tween.Punch(t, amount);
+            if (t != null) t.localScale = rest;
         }
 
         private IEnumerator ShowResultSoon()

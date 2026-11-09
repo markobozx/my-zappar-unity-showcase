@@ -242,6 +242,9 @@ namespace Showcase.EditorTools.Experiences
             Ui.Place(frame.rectTransform, new Vector2(0.5f, 1f), new Vector2(1100, 10), Vector2.zero);
             var frame2 = Ui.Panel(bg.transform, new Color(0.25f, 0.9f, 1f), "Bottom Neon");
             Ui.Place(frame2.rectTransform, new Vector2(0.5f, 0f), new Vector2(1100, 10), Vector2.zero);
+            // World canvases report "pointer over UI" even when 3D props sit in front of them, so a
+            // raycast-target board would swallow taps on every item drawn over it.
+            bg.raycastTarget = frame.raycastTarget = frame2.raycastTarget = false;
 
             exp.BoardHeader = Ui.Label(bg.transform, "LOST & FOUND   0 / 8", 76, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold, "Header");
             Ui.Place(exp.BoardHeader.rectTransform, new Vector2(0.5f, 1f), new Vector2(1060, 90), new Vector2(0, -20));

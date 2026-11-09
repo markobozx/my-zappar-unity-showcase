@@ -135,6 +135,7 @@ namespace Showcase.EditorTools.Experiences
             Ui.Stretch(bg.rectTransform);
             var stripe = Ui.Panel(bg.transform, Ui.Accent, "Stripe");
             Ui.Place(stripe.rectTransform, new Vector2(0.5f, 0f), new Vector2(700, 16), Vector2.zero);
+            bg.raycastTarget = stripe.raycastTarget = false;
             var title = Ui.Label(bg.transform, "NOVA DINER", 96, new Color(1f, 0.82f, 0.3f), TextAnchor.MiddleCenter, FontStyle.Bold, "Brand");
             Ui.Place(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(680, 120), new Vector2(0, -10));
             var sub = Ui.Label(bg.transform, "PICK-UP  ›", 44, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold, "Sub");

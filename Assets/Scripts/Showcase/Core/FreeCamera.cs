@@ -18,7 +18,7 @@ namespace Showcase
         [SerializeField] private float m_maxDistance = 8f;
         [SerializeField] private float m_smoothing = 8f;
         [Tooltip("Stage width (World units) kept visible at the default 4.2 distance; scales with closer framings.")]
-        [SerializeField] private float m_fitWidth = 2.9f;
+        [SerializeField] private float m_fitWidth = 3.2f;
 
         private Vector3 m_targetFocus;
         private float m_targetDistance, m_targetYaw, m_targetPitch;

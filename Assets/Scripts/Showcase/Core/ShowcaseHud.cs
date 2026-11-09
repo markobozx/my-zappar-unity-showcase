@@ -82,6 +82,7 @@ namespace Showcase
             toastBg.gameObject.SetActive(false);
 
             var result = Ui.Panel(root, new Color(1f, 0.98f, 0.95f, 0.97f), "Result");
+            result.raycastTarget = true;   // block taps to the scene while the result is up
             m_result = result.rectTransform;
             Ui.Place(m_result, new Vector2(0.5f, 0.5f), new Vector2(880, 620), Vector2.zero);
             var stripe = Ui.Panel(result.transform, Ui.Accent, "Stripe");
@@ -128,7 +129,10 @@ namespace Showcase
             string tip = tracking ? "" : "Point at the target for AR · drag to look around";
             string text = string.IsNullOrEmpty(m_experienceHint) ? tip : (string.IsNullOrEmpty(tip) ? m_experienceHint : m_experienceHint + "\n<size=28>" + tip + "</size>");
             m_hint.text = text;
-            m_hint.transform.parent.gameObject.SetActive(!string.IsNullOrEmpty(text));
+            var box = (RectTransform)m_hint.transform.parent;
+            box.gameObject.SetActive(!string.IsNullOrEmpty(text));
+            // Grow the box to the wrapped text so long hints never spill out.
+            box.sizeDelta = new Vector2(box.sizeDelta.x, Mathf.Max(110f, m_hint.preferredHeight + 24f));
         }
 
         public void Toast(string text, float seconds = 1.6f)

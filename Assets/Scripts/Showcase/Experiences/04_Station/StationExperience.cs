@@ -52,6 +52,7 @@ namespace Showcase.Experiences.Station
         private readonly bool[] m_pattern = new bool[3];
         private int m_wrongCodes;
         private float m_startTime, m_endTime;
+        private int m_lastTimerSecond = -1;
         private readonly List<Coroutine> m_running = new List<Coroutine>();
         private readonly Dictionary<Transform, Vector3> m_baseScale = new Dictionary<Transform, Vector3>();
 
@@ -96,7 +97,12 @@ namespace Showcase.Experiences.Station
         {
             if (Hud == null || m_escaped)
                 return;
-            Hud.SetTimer(FormatTime(Time.time - m_startTime));
+            // Only rebuild the string when the second changes: no per-frame garbage on WebGL.
+            int second = Mathf.FloorToInt(Time.time - m_startTime);
+            if (second == m_lastTimerSecond)
+                return;
+            m_lastTimerSecond = second;
+            Hud.SetTimer(FormatTime(second));
         }
 
         // ---------- reset ----------
@@ -133,13 +139,14 @@ namespace Showcase.Experiences.Station
                 ApplySwitchVisual(i, false);
 
             m_startTime = Time.time;
+            m_lastTimerSecond = 0;
             UpdateScore();
             UpdateKeypad(null);
             UpdateMonitor();
             UpdateTray();
             if (Hud != null)
             {
-                Hud.SetHint("Escape the station! Tap things to investigate.\nStart with the crackling radio.");
+                Hud.SetHint("Escape the station! Start with the crackling radio.");
                 Hud.SetTimer("00:00");
             }
             Run(SmokeLoop());
@@ -172,7 +179,7 @@ namespace Showcase.Experiences.Station
 
         private static void EnsureEventSystem()
         {
-            // World-canvas keypad buttons need an EventSystem; the Showcase scene does not ship one yet.
+            // Fallback only: the Showcase scene has a root EventSystem, and a second one would break UI input.
             if (EventSystem.current != null || FindAnyObjectByType<EventSystem>() != null)
                 return;
             new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
@@ -482,10 +489,13 @@ namespace Showcase.Experiences.Station
                 Ui.Stretch(bg.rectTransform);
                 var stripe = Ui.Panel(bg.transform, Ui.Accent, "Stripe");
                 Ui.Place(stripe.rectTransform, new Vector2(0.5f, 1f), new Vector2(360, 10), Vector2.zero);
+                // Only the keys catch UI raycasts; world canvases otherwise eat taps meant for props in front of them.
+                bg.raycastTarget = stripe.raycastTarget = false;
                 var head = Ui.Label(bg.transform, "LOCKER CODE", 30, new Color(1f, 1f, 1f, 0.8f), TextAnchor.MiddleCenter, FontStyle.Bold, "Header");
                 Ui.Place(head.rectTransform, new Vector2(0.5f, 1f), new Vector2(340, 50), new Vector2(0, -16));
                 m_keypadScreen = Ui.Panel(bg.transform, ScreenBg, "Display");
                 Ui.Place(m_keypadScreen.rectTransform, new Vector2(0.5f, 1f), new Vector2(316, 90), new Vector2(0, -70));
+                m_keypadScreen.raycastTarget = false;
                 m_keypadDisplay = Ui.Label(m_keypadScreen.transform, "_ _ _", 62, ScreenGreen, TextAnchor.MiddleCenter, FontStyle.Bold, "Digits");
                 Ui.Stretch(m_keypadDisplay.rectTransform);
                 string keys = "123456789C0";
@@ -507,6 +517,8 @@ namespace Showcase.Experiences.Station
                 var canvas = Ui.WorldCanvas("Monitor Canvas", MonitorAnchor, new Vector2(420, 300), MonitorWidth);
                 var bg = Ui.Panel(canvas.transform, ScreenBg, "Screen");
                 Ui.Stretch(bg.rectTransform);
+                // Display only, so taps on the screen reach the monitor's collider (TapMonitor).
+                bg.raycastTarget = false;
                 m_monitorHeader = Ui.Label(bg.transform, "NOVA X1 · POWER", 34, new Color(0.5f, 0.9f, 1f), TextAnchor.MiddleCenter, FontStyle.Bold, "Header");
                 Ui.Place(m_monitorHeader.rectTransform, new Vector2(0.5f, 1f), new Vector2(400, 50), new Vector2(0, -10));
                 m_monitorStatus = Ui.Label(bg.transform, "", 52, ScreenRed, TextAnchor.MiddleCenter, FontStyle.Bold, "Status");
@@ -516,6 +528,7 @@ namespace Showcase.Experiences.Station
                 for (int i = 0; i < 3; i++)
                 {
                     m_monitorCells[i] = Ui.Panel(bg.transform, Color.gray, "Cell " + (i + 1));
+                    m_monitorCells[i].raycastTarget = false;
                     Ui.Place(m_monitorCells[i].rectTransform, new Vector2(0f, 0f), new Vector2(112, 150), new Vector2(28 + i * 128, 36));
                     m_monitorCellText[i] = Ui.Label(m_monitorCells[i].transform, "", 34, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold, "Text");
                     Ui.Stretch(m_monitorCellText[i].rectTransform);
@@ -529,6 +542,7 @@ namespace Showcase.Experiences.Station
                 Ui.Stretch(bg.rectTransform);
                 var stripe = Ui.Panel(bg.transform, Ui.Accent2, "Stripe");
                 Ui.Place(stripe.rectTransform, new Vector2(0f, 0.5f), new Vector2(14, 130), Vector2.zero);
+                bg.raycastTarget = stripe.raycastTarget = false;
                 var head = Ui.Label(bg.transform, "TOOL TRAY", 30, Ui.Muted, TextAnchor.UpperLeft, FontStyle.Bold, "Header");
                 Ui.Place(head.rectTransform, new Vector2(0f, 1f), new Vector2(400, 44), new Vector2(32, -12));
                 m_trayLabel = Ui.Label(bg.transform, "", 40, Ui.Ink, TextAnchor.UpperLeft, FontStyle.Bold, "Slot");

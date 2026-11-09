@@ -38,6 +38,8 @@ namespace Showcase.Experiences.Diner
             Ui.Place(m_stripe.rectTransform, new Vector2(0.5f, 1f), new Vector2(WidthPx, 14), Vector2.zero);
             var pin = Ui.Panel(m_bg.transform, new Color(0.55f, 0.56f, 0.62f), "Clip");
             Ui.Place(pin.rectTransform, new Vector2(0.5f, 1f), new Vector2(90, 26), new Vector2(0, 10));
+            // Display only: don't let the tickets swallow taps meant for the props behind them.
+            m_bg.raycastTarget = m_stripe.raycastTarget = pin.raycastTarget = false;
 
             m_number = Ui.Label(m_bg.transform, "", 34, Ui.Accent, TextAnchor.UpperLeft, FontStyle.Bold, "Number");
             Ui.Place(m_number.rectTransform, new Vector2(0f, 1f), new Vector2(WidthPx - 48, 44), new Vector2(26, -28));

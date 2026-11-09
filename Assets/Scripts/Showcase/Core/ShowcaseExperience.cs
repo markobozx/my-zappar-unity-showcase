@@ -35,8 +35,10 @@ namespace Showcase
         public void Exit()
         {
             WorldCard.CloseOpen();
-            OnExit();
+            // Stop tweens first so they can't undo the cleanup done in OnExit (stopped Tween.Punch
+            // coroutines restore their rest scale on the way out).
             StopAllCoroutines();
+            OnExit();
             gameObject.SetActive(false);
         }
 

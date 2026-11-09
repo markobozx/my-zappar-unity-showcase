@@ -8,6 +8,9 @@ namespace Showcase.Experiences.Nightclub
     {
         public NightclubExperience Game;
         private bool m_punching;
+        private Vector3 m_restScale;
+
+        void Awake() => m_restScale = transform.localScale;
 
         public void OnTap(RaycastHit hit)
         {
@@ -24,6 +27,11 @@ namespace Showcase.Experiences.Nightclub
             m_punching = false;
         }
 
-        void OnDisable() => m_punching = false;
+        // Exit can stop the punch half-way; put the pad back to its real size.
+        void OnDisable()
+        {
+            m_punching = false;
+            transform.localScale = m_restScale;
+        }
     }
 }

@@ -18,6 +18,7 @@ namespace Showcase.Experiences.Lab
         public Transform Cork => m_cork;
 
         private Color m_tagIdle;
+        private Vector3 m_corkScale = Vector3.one;
         private bool m_initialised;
 
         void Awake() => Init();
@@ -29,6 +30,7 @@ namespace Showcase.Experiences.Lab
             HomePosition = transform.localPosition;
             HomeRotation = transform.localRotation;
             if (m_tagBackground != null) m_tagIdle = m_tagBackground.color;
+            if (m_cork != null) m_corkScale = m_cork.localScale;
         }
 
         public void ResetPose()
@@ -37,7 +39,12 @@ namespace Showcase.Experiences.Lab
             transform.localPosition = HomePosition;
             transform.localRotation = HomeRotation;
             transform.localScale = Vector3.one;
-            if (m_cork != null) m_cork.gameObject.SetActive(true);
+            if (m_cork != null)
+            {
+                // An Exit during the cork's pop-in tween would otherwise leave it shrunk for good.
+                m_cork.localScale = m_corkScale;
+                m_cork.gameObject.SetActive(true);
+            }
             SetUsed(false);
         }
 

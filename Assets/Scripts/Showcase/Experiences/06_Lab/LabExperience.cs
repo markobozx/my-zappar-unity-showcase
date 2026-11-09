@@ -157,7 +157,11 @@ namespace Showcase.Experiences.Lab
                     if (v != null) v.ResetPose();
             if (m_stream != null) m_stream.gameObject.SetActive(false);
             if (m_beaker != null) m_beaker.localScale = m_beakerScale;
-            if (m_resetButton != null) m_resetButton.Pulsing = false;
+            if (m_resetButton != null)
+            {
+                m_resetButton.Pulsing = false;
+                m_resetButton.ResetScale();
+            }
             SetLevel(0f);
             UpdateMixPanel();
         }

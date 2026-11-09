@@ -63,7 +63,7 @@ namespace Showcase.Experiences.Stack
         private float m_peakHeight;
         private int m_lastMilestone;
         private int m_lastShownSecond = -1;
-        private string m_lastHud = "";
+        private int m_lastSec = -1, m_lastCm = -1, m_lastMissesShown = -1, m_lastStacked = -1;
         private float m_finalHeight;
         private int m_finalItems;
         private bool m_finalShipped;
@@ -71,7 +71,7 @@ namespace Showcase.Experiences.Stack
 
         private Vector3 m_cargoPos, m_truckPos, m_markerScale = Vector3.one;
         private Quaternion m_cargoRot, m_truckRot;
-        private Vector3 m_cargoScale;
+        private Vector3 m_cargoScale, m_truckScale = Vector3.one;
         private Coroutine m_endRoutine, m_truckRoutine, m_markerPunch;
 
         public bool Running => m_running;
@@ -104,6 +104,7 @@ namespace Showcase.Experiences.Stack
             {
                 m_truckPos = m_truck.localPosition;
                 m_truckRot = m_truck.localRotation;
+                m_truckScale = m_truck.localScale;
             }
             if (m_heightMarker != null) m_markerScale = m_heightMarker.localScale;
 
@@ -172,7 +173,10 @@ namespace Showcase.Experiences.Stack
         {
             if (m_endRoutine != null) StopCoroutine(m_endRoutine);
             if (m_truckRoutine != null) StopCoroutine(m_truckRoutine);
-            m_endRoutine = m_truckRoutine = null;
+            if (m_markerPunch != null) StopCoroutine(m_markerPunch);
+            m_endRoutine = m_truckRoutine = m_markerPunch = null;
+            // Punch tweens stopped mid-way (Exit / Play again during loading) would leave these squashed.
+            if (m_heightMarker != null) m_heightMarker.localScale = m_markerScale;
             if (m_cargo != null)
             {
                 m_cargo.SetParent(transform, false);
@@ -185,6 +189,7 @@ namespace Showcase.Experiences.Stack
             {
                 m_truck.gameObject.SetActive(true);
                 m_truck.localRotation = m_truckRot;
+                m_truck.localScale = m_truckScale;
                 if (driveTruckIn && isActiveAndEnabled)
                 {
                     m_truck.localPosition = m_truckPos + Vector3.right * 2.4f;
@@ -641,10 +646,14 @@ namespace Showcase.Experiences.Stack
         {
             int sec = Mathf.CeilToInt(Mathf.Max(0f, m_timeLeft));
             int cm = Mathf.RoundToInt(TowerHeight() * CmPerUnit);
-            string key = sec + "|" + cm + "|" + m_misses + "|" + StackedCount;
-            if (!force && key == m_lastHud)
+            int stacked = StackedCount;
+            // Compared as ints: building a key string every frame is per-frame garbage on WebGL.
+            if (!force && sec == m_lastSec && cm == m_lastCm && m_misses == m_lastMissesShown && stacked == m_lastStacked)
                 return;
-            m_lastHud = key;
+            m_lastSec = sec;
+            m_lastCm = cm;
+            m_lastMissesShown = m_misses;
+            m_lastStacked = stacked;
             string time = FormatTime(sec);
             bool urgent = m_running && sec <= 10;
             if (Hud != null)
@@ -657,7 +666,7 @@ namespace Showcase.Experiences.Stack
             if (m_boardDrops != null)
             {
                 string drops = m_misses > 0 ? "<color=#FF7361>" + m_misses + "</color>" : "0";
-                m_boardDrops.text = "Stacked " + StackedCount + "   ·   Drops " + drops + "/" + MaxMisses;
+                m_boardDrops.text = "Stacked " + stacked + "   ·   Drops " + drops + "/" + MaxMisses;
             }
         }
 

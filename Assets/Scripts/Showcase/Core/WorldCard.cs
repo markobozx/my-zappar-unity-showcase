@@ -41,6 +41,7 @@ namespace Showcase
             canvas.sortingOrder = 10;
 
             var bg = Ui.Panel(canvas.transform, Ui.Paper, "Background");
+            bg.raycastTarget = true;   // a tap on the card must not reach props behind it
             Ui.Stretch(bg.rectTransform);
             var stripe = Ui.Panel(bg.transform, Ui.Accent, "Stripe");
             Ui.Place(stripe.rectTransform, new Vector2(0.5f, 1f), new Vector2(600, 12), Vector2.zero);
