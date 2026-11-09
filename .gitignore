@@ -87,3 +87,16 @@ webgl
 # Build/runtime byproducts (Burst WebGL output, Zappar editor log)
 /Data/
 zcv.log
+
+# Asset Store packs: licensed per seat, must not be published in this public repo.
+# Re-import them from the Asset Store cache on each machine.
+/[Aa]ssets/KayKit/
+/[Aa]ssets/KayKit.meta
+/[Aa]ssets/Cosmic_Retro_Mega_Bundle/
+/[Aa]ssets/Cosmic_Retro_Mega_Bundle.meta
+/[Aa]ssets/ithappy/
+/[Aa]ssets/ithappy.meta
+/[Aa]ssets/Synty/
+/[Aa]ssets/Synty.meta
+/[Aa]ssets/JMO Assets/
+/[Aa]ssets/JMO Assets.meta
