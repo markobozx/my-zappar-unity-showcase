@@ -918,7 +918,7 @@ namespace Showcase.Experiences.BarCart
             if (m_recipeName == null) return;
             Color c = BarCartData.Blend(m_picked);
             m_recipeName.text = DrinkName;
-            m_recipeGlass.text = BarCartData.Glasses[m_glass].name + " glass  -  " + BarCartData.Carts[m_cart] + " cart";
+            m_recipeGlass.text = BarCartData.Glasses[m_glass].name + " glass  -  " + BarCartData.Carts[m_cart];
             m_recipeSwatch.color = c;
             var lines = m_picked.Select(i => "<color=#" + ColorUtility.ToHtmlStringRGB(BarCartData.Flavors[i].Color) + ">●</color> 60 ml " +
                                              BarCartData.Flavors[i].Name + "  <size=24><color=#77748A>" + BarCartData.Flavors[i].Note + "</color></size>").ToList();

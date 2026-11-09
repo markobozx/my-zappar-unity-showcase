@@ -218,11 +218,10 @@ namespace Showcase.EditorTools.Experiences
             var top = Ui.WorldCanvas("Cap Label", btn, new Vector2(400, 220), 0.23f);
             top.transform.localPosition = new Vector3(0f, 0.062f, 0f);
             top.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-            var text = Ui.Label(top.transform, "RESET\n<size=66>BEAKER</size>", 92, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
+            var text = Ui.Label(top.transform, "RESET\n<size=64>BEAKER</size>", 92, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
             text.lineSpacing = 0.85f;
             Ui.Stretch(text.rectTransform);
             text.horizontalOverflow = HorizontalWrapMode.Overflow;
-            text.gameObject.AddComponent<Outline>().effectColor = new Color(0.45f, 0.08f, 0.06f, 0.8f);
 
             var box = btn.gameObject.AddComponent<BoxCollider>();
             box.center = new Vector3(0f, 0.05f, 0f);

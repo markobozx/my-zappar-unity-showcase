@@ -46,7 +46,7 @@ namespace Showcase.Experiences.Lab
             F(Aloe, Citrus, Mint, "Morning Breeze Tonic", FxKind.Sparkle, "A2E86B", "Fresh and zingy, but it won't glow.\nSomething needs more energy."),
             F(Aloe, Citrus, Charcoal, "Swamp Lemonade", FxKind.Smoke, "6B7A3A", "Murky green fizz.\nSmells like a pond party."),
             F(Aloe, Citrus, Berry, "Fruit Salad Gel", FxKind.Poof, "E8775A", "Tasty! Not exactly a breakthrough.\nThe berry is hogging the spotlight."),
-            F(Aloe, Citrus, Spark, "Nova Glow Serum", FxKind.Magic, "FFD95A", "Calm, bright and glowing.\nThe hero formula!", true),
+            F(Aloe, Citrus, Spark, "Nova Glow Serum", FxKind.Magic, "FFC21F", "Calm, bright and glowing.\nThe hero formula!", true),
             F(Aloe, Mint, Charcoal, "Bog Fog", FxKind.Smoke, "5E7A72", "A cold grey cloud rolls out.\nThe dark one ruins everything."),
             F(Aloe, Mint, Berry, "Minty Berry Balm", FxKind.Sparkle, "9E8FD0", "Lovely lip balm.\nWrong lab, though."),
             F(Aloe, Mint, Spark, "Frost Bolt", FxKind.Explosion, "B8F5A0", "Too cold for a spark. Crack!\nSwap the chill for some sunshine."),

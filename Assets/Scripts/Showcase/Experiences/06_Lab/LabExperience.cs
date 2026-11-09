@@ -290,7 +290,7 @@ namespace Showcase.Experiences.Lab
             if (m_beaker == null) return;
             string hex = ColorUtility.ToHtmlStringRGB(f.Color.grayscale > 0.75f ? f.Color * 0.7f : f.Color);
             string body = "<color=#" + hex + ">" + MixNames(" + ") + "</color>\n" + f.Copy + "\n<color=#E0584A>Not the hero formula. Try again!</color>";
-            var card = WorldCard.Show(m_beaker, new Vector3(0f, 0.75f, -0.1f), f.Name, body, 0.8f,
+            var card = WorldCard.Show(m_beaker, new Vector3(0f, 0.66f, -0.12f), f.Name, body, 0.8f,
                 ("Reset beaker", () => ResetBeaker(true)));
             if (card != null && card.Title != null)
             {
