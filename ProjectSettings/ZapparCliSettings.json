@@ -1,6 +1,6 @@
 {
     "projectId": "2246373108288074442",
-    "version": "0.0.3",
+    "version": "0.0.4",
     "autoBumpVersion": true,
     "crossOriginIsolation": false,
     "buildPath": "Builds/WebGL",
@@ -8,6 +8,7 @@
     "targetImagesFolder": "Assets/Showcase/Targets",
     "autoTrainNewImages": true,
     "builtTargets": [
+        "counter-composition",
         "example-tracking-image"
     ],
     "zapworksUrl": "https://my.zap.works/"
