@@ -41,6 +41,8 @@ namespace Showcase.EditorTools
             EditorSettings.enterPlayModeOptions = EnterPlayModeOptions.DisableDomainReload | EnterPlayModeOptions.DisableSceneReload;
             EditorSceneManager.OpenScene(ShowcaseSceneBuilder.ScenePath, OpenSceneMode.Single);
             Application.logMessageReceived += OnLog;
+            ShowcaseExperience.SnapshotRequested -= OnSnapshot;
+            ShowcaseExperience.SnapshotRequested += OnSnapshot;
             s_step = 0;
             s_waitUntil = EditorApplication.timeSinceStartup + 2.0;
             s_deadline = EditorApplication.timeSinceStartup + 600;
@@ -175,7 +177,24 @@ namespace Showcase.EditorTools
             // Frame for the portrait phone-sized target rather than the batch window.
             var free = cam.GetComponent<FreeCamera>();
             if (free != null) { free.SnapNow(); free.SnapNow(); }
+            // Overlay canvases don't reach a camera render; show them through the camera for the shot.
+            var overlays = new List<Canvas>();
+            foreach (var c in UnityEngine.Object.FindObjectsByType<Canvas>(FindObjectsInactive.Exclude))
+                if (c.isRootCanvas && c.renderMode == RenderMode.ScreenSpaceOverlay) overlays.Add(c);
+            foreach (var c in overlays)
+            {
+                c.renderMode = RenderMode.ScreenSpaceCamera;
+                c.worldCamera = cam;
+                c.planeDistance = cam.nearClipPlane + 0.05f;
+            }
+            Canvas.ForceUpdateCanvases();
+            if (free != null) { free.SnapNow(); free.SnapNow(); }
             cam.Render();
+            foreach (var c in overlays)
+            {
+                c.renderMode = RenderMode.ScreenSpaceOverlay;
+                c.worldCamera = null;
+            }
             RenderTexture.active = rt;
             var tex = new Texture2D(rt.width, rt.height, TextureFormat.RGB24, false);
             tex.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0);
@@ -187,6 +206,9 @@ namespace Showcase.EditorTools
             UnityEngine.Object.DestroyImmediate(tex);
         }
 
+        // SelfTest() can ask for extra shots, e.g. with the tray open: Snapshot("tray") -> play-tray.png
+        static void OnSnapshot(ShowcaseExperience e, string name) => Shot(e.Id, "play-" + name);
+
         static void Fail(string why)
         {
             s_errors.Add(why);
@@ -196,6 +218,7 @@ namespace Showcase.EditorTools
         static void Finish()
         {
             EditorApplication.update -= Drive;
+            ShowcaseExperience.SnapshotRequested -= OnSnapshot;
             Application.logMessageReceived -= OnLog;
             foreach (var e in s_errors.Distinct().Take(40)) Log("ERROR " + e);
             Log(s_errors.Count == 0 ? "PASS" : "FAIL (" + s_errors.Count + " errors)");

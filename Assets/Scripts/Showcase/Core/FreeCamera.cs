@@ -22,6 +22,7 @@ namespace Showcase
 
         private Vector3 m_targetFocus;
         private float m_targetDistance, m_targetYaw, m_targetPitch;
+        private float m_lift;
 
         void Awake()
         {
@@ -90,6 +91,10 @@ namespace Showcase
                 distance = m_distance * Mathf.Max(1f, neededAtDefault / 4.2f);
             }
 
+            // Lift the stage above the bottom tray: moving the camera down along its up axis moves the picture up.
+            float cover = ShowcaseTray.Instance != null ? ShowcaseTray.Instance.Cover : 0f;
+            m_lift = Mathf.Lerp(m_lift, cover * 0.5f, t);
+
             Transform space = m_pivotSpace;
             Vector3 focusWorld = space != null ? space.TransformPoint(m_focus) : m_focus;
             Quaternion spaceRot = space != null ? space.rotation : Quaternion.identity;
@@ -97,6 +102,8 @@ namespace Showcase
             Quaternion rot = spaceRot * Quaternion.Euler(m_pitch, m_yaw, 0f);
             float scale = space != null ? space.lossyScale.x : 1f;
             transform.position = focusWorld - rot * Vector3.forward * (distance * scale);
+            if (cam != null && m_lift > 0.001f)
+                transform.position -= rot * Vector3.up * (2f * Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad) * distance * scale * m_lift);
             transform.rotation = rot;
         }
     }

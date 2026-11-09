@@ -24,13 +24,7 @@ namespace Showcase.EditorTools.Experiences
         static readonly Color DialPlate = new Color(0.2f, 0.18f, 0.29f);
         static readonly Color Gold = new Color(1f, 0.78f, 0.22f);
 
-        static readonly Color[] LookColors =
-        {
-            new Color(1f, 0.45f, 0.38f),     // Toon
-            new Color(0.17f, 0.17f, 0.24f),  // Ink
-            new Color(0.42f, 0.66f, 0.18f),  // Game Boy
-            new Color(0.6f, 0.38f, 0.95f),   // Pixel
-        };
+        static Color[] LookColors => LooksExperience.LookColors;
 
         public static void Build(ShowcaseBuildContext ctx, Transform root)
         {
@@ -80,7 +74,7 @@ namespace Showcase.EditorTools.Experiences
 
             exp.Id = "looks";
             exp.Title = "Look Switcher Gallery";
-            exp.Hint = "Tap a style button: Toon, Ink, Game Boy or Pixel.\nEach look hides one secret object - tap it!";
+            exp.Hint = "Pick a look in the tray (or tap a dial button).\nEach look hides one secret object - tap it!";
             exp.FocusPoint = new Vector3(0f, 0.25f, 0.05f);
             exp.FocusDistance = 4.6f;
             exp.FocusPitch = 48f;

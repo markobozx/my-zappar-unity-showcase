@@ -69,9 +69,9 @@ namespace Showcase.EditorTools.Experiences
             var exp = root.gameObject.AddComponent<StackDeliveryExperience>();
             exp.Id = "stack";
             exp.Title = "Stack the Delivery";
-            exp.Hint = "Tap anywhere to drop the item.\nStack it high before the truck leaves!";
-            exp.FocusPoint = new Vector3(0.05f, 0.42f, 0.1f);
-            exp.FocusDistance = 4.7f;
+            exp.Hint = "Tap anywhere or DROP to drop the item.\nStack it high before the truck leaves!";
+            exp.FocusPoint = new Vector3(0.12f, 0.42f, 0.08f);
+            exp.FocusDistance = 4.1f;
             exp.FocusPitch = 40f;
             ShowcaseBuildContext.Set(exp, "m_templates", templates);
             ShowcaseBuildContext.Set(exp, "m_cargo", cargo);
@@ -82,7 +82,6 @@ namespace Showcase.EditorTools.Experiences
             ShowcaseBuildContext.Set(exp, "m_bedLocal", bedLocal);
             ShowcaseBuildContext.Set(exp, "m_groundColliders", ground.ToArray());
             ShowcaseBuildContext.Set(exp, "m_heightMarker", marker);
-            ShowcaseBuildContext.Set(exp, "m_heightLabel", markerLabel);
             ShowcaseBuildContext.Set(exp, "m_boardTime", boardTime);
             ShowcaseBuildContext.Set(exp, "m_boardDrops", boardDrops);
             ShowcaseBuildContext.Set(exp, "m_dropGuide", guide.transform);
@@ -185,8 +184,8 @@ namespace Showcase.EditorTools.Experiences
                 float y = palletTop + k * 0.1f;
                 ctx.Primitive(PrimitiveType.Cube, "Tick", ruler, new Vector3(0.02f + (major ? 0.035f : 0.02f), y, 0f), new Vector3(major ? 0.07f : 0.04f, 0.008f, 0.03f), major ? Coral : HazardDark, false);
                 if (!major) continue;
-                var c = Ui.WorldCanvas("Label " + k * 25, ruler, new Vector2(300, 100), 0.15f);
-                c.transform.localPosition = new Vector3(-0.1f, y, -0.02f);
+                var c = Ui.WorldCanvas("Label " + k * 25, ruler, new Vector2(300, 100), 0.22f);
+                c.transform.localPosition = new Vector3(-0.14f, y, -0.02f);
                 var t = Ui.Label(c.transform, (k * 25) + " cm", 70, Color.white, TextAnchor.MiddleRight, FontStyle.Bold);
                 Ui.Stretch(t.rectTransform);
                 t.horizontalOverflow = HorizontalWrapMode.Overflow;
@@ -201,14 +200,7 @@ namespace Showcase.EditorTools.Experiences
             arrow.transform.localRotation = Quaternion.Euler(0f, 0f, 45f);
             for (int i = 0; i < 3; i++)
                 ctx.Primitive(PrimitiveType.Cube, "Dash", marker, new Vector3(0.12f + i * 0.11f, 0f, 0f), new Vector3(0.06f, 0.008f, 0.008f), Coral, false);
-            var lc = Ui.WorldCanvas("Marker Label", marker, new Vector2(300, 110), 0.2f);
-            lc.transform.localPosition = new Vector3(0.24f, 0.05f, -0.03f);
-            var lbg = Ui.Panel(lc.transform, Coral, "Background");
-            Ui.Stretch(lbg.rectTransform);
-            lbg.raycastTarget = false;
-            markerLabel = Ui.Label(lbg.transform, "0 cm", 80, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
-            Ui.Stretch(markerLabel.rectTransform);
-            markerLabel.horizontalOverflow = HorizontalWrapMode.Overflow;
+            markerLabel = null;   // the experience pins a WorldTag with the height to the marker
             return ruler;
         }
 

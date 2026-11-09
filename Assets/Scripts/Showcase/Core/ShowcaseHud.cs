@@ -36,6 +36,7 @@ namespace Showcase
         void OnDestroy()
         {
             ShowcaseRig.TrackingChanged -= OnTrackingChanged;
+            ShowcaseTray.OpenChanged -= OnTrayChanged;
             if (Instance == this)
                 Instance = null;
         }
@@ -57,8 +58,14 @@ namespace Showcase
             Ui.Place((RectTransform)m_back.transform, new Vector2(0f, 1f), new Vector2(220, 100), new Vector2(30, -50));
 
             m_title = Ui.Label(root, "", 52, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold, "Title");
-            Ui.Place(m_title.rectTransform, new Vector2(0.5f, 1f), new Vector2(560, 100), new Vector2(0, -50));
+            Ui.Place(m_title.rectTransform, new Vector2(0.5f, 1f), new Vector2(480, 100), new Vector2(0, -50));
             m_title.gameObject.AddComponent<Outline>().effectColor = new Color(0, 0, 0, 0.55f);
+            // Long titles shrink instead of running under the Back button and score.
+            m_title.horizontalOverflow = HorizontalWrapMode.Wrap;
+            m_title.verticalOverflow = VerticalWrapMode.Truncate;
+            m_title.resizeTextForBestFit = true;
+            m_title.resizeTextMinSize = 30;
+            m_title.resizeTextMaxSize = 52;
 
             m_score = Ui.Label(root, "", 48, Color.white, TextAnchor.MiddleRight, FontStyle.Bold, "Score");
             Ui.Place(m_score.rectTransform, new Vector2(1f, 1f), new Vector2(320, 100), new Vector2(-34, -50));
@@ -71,18 +78,30 @@ namespace Showcase
             var hintBg = Ui.Panel(root, new Color(0.13f, 0.12f, 0.2f, 0.6f), "Hint");
             Ui.Place(hintBg.rectTransform, new Vector2(0.5f, 0f), new Vector2(980, 110), new Vector2(0, 200));
             hintBg.raycastTarget = false;
+            Ui.Round(hintBg, 30f);
             m_hint = Ui.Label(hintBg.transform, "", 36, Color.white);
             Ui.Stretch(m_hint.rectTransform, 24, 24, 8, 8);
 
+            // The tray sits above the hint and below toast/result in draw order.
+            gameObject.AddComponent<ShowcaseTray>().Build(root);
+            ShowcaseTray.OpenChanged += OnTrayChanged;
+
             var toastBg = Ui.Panel(root, new Color(1f, 0.98f, 0.95f, 0.95f), "Toast");
-            Ui.Place(toastBg.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(820, 150), new Vector2(0, 380));
+            // Bottom-anchored; ToastRoutine parks it just above the tray (or the hint), over the floor.
+            Ui.Place(toastBg.rectTransform, new Vector2(0.5f, 0f), new Vector2(820, 104), new Vector2(0, 360));
             toastBg.raycastTarget = false;
-            m_toast = Ui.Label(toastBg.transform, "", 46, Ui.Ink, TextAnchor.MiddleCenter, FontStyle.Bold);
+            Ui.Round(toastBg, 40f);
+            m_toast = Ui.Label(toastBg.transform, "", 40, Ui.Ink, TextAnchor.MiddleCenter, FontStyle.Bold);
+            m_toast.resizeTextForBestFit = true;
+            m_toast.resizeTextMinSize = 26;
+            m_toast.resizeTextMaxSize = 40;
+            m_toast.verticalOverflow = VerticalWrapMode.Truncate;
             Ui.Stretch(m_toast.rectTransform, 20, 20, 10, 10);
             toastBg.gameObject.SetActive(false);
 
             var result = Ui.Panel(root, new Color(1f, 0.98f, 0.95f, 0.97f), "Result");
             result.raycastTarget = true;   // block taps to the scene while the result is up
+            Ui.Round(result, 44f);
             m_result = result.rectTransform;
             Ui.Place(m_result, new Vector2(0.5f, 0.5f), new Vector2(880, 620), Vector2.zero);
             var stripe = Ui.Panel(result.transform, Ui.Accent, "Stripe");
@@ -107,6 +126,7 @@ namespace Showcase
             SetHint("");
             ShowBack(false);
             HideResult();
+            ShowcaseTray.Instance?.Close();
         }
 
         public void SetTitle(string t) => m_title.text = t;
@@ -122,6 +142,7 @@ namespace Showcase
         }
 
         private void OnTrackingChanged(bool tracking) => Refresh();
+        private void OnTrayChanged(bool open) => Refresh();
 
         private void Refresh()
         {
@@ -130,7 +151,9 @@ namespace Showcase
             string text = string.IsNullOrEmpty(m_experienceHint) ? tip : (string.IsNullOrEmpty(tip) ? m_experienceHint : m_experienceHint + "\n<size=28>" + tip + "</size>");
             m_hint.text = text;
             var box = (RectTransform)m_hint.transform.parent;
-            box.gameObject.SetActive(!string.IsNullOrEmpty(text));
+            // The tray covers the hint's spot and carries its own instructions.
+            bool trayOpen = ShowcaseTray.Instance != null && ShowcaseTray.Instance.IsOpen;
+            box.gameObject.SetActive(!string.IsNullOrEmpty(text) && !trayOpen);
             // Grow the box to the wrapped text so long hints never spill out.
             box.sizeDelta = new Vector2(box.sizeDelta.x, Mathf.Max(110f, m_hint.preferredHeight + 24f));
         }
@@ -146,6 +169,10 @@ namespace Showcase
         {
             var bg = m_toast.transform.parent.gameObject;
             m_toast.text = text;
+            var tray = ShowcaseTray.Instance;
+            float canvasH = ((RectTransform)bg.transform.parent).rect.height;
+            float y = tray != null && tray.IsOpen ? tray.Cover * canvasH + 24f : 340f;
+            ((RectTransform)bg.transform).anchoredPosition = new Vector2(0f, y);
             bg.SetActive(true);
             var rt = (RectTransform)bg.transform;
             for (float a = 0f; a < 1f; a += Time.deltaTime / 0.18f)
@@ -160,6 +187,7 @@ namespace Showcase
 
         public void ShowResult(string title, string body, params (string label, Action action)[] buttons)
         {
+            ShowcaseTray.Instance?.Close();
             m_resultTitle.text = title;
             m_resultBody.text = body;
             for (int i = m_resultButtons.childCount - 1; i >= 0; i--)

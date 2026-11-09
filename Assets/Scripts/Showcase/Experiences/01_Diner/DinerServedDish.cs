@@ -23,7 +23,7 @@ namespace Showcase.Experiences.Diner
             string kind = Recipe.Pizza ? "Stone-baked pizza" : "Smash burger";
             WorldCard.Show(transform, new Vector3(0f, 0.45f, 0f), Recipe.Name,
                 kind + " · order #" + OrderNumber + "\n" + Recipe.Price + " · " + Recipe.Kcal + " kcal\n<color=#E8735B>" + DinerMenu.Brand + " · made to order</color>",
-                0.7f);
+                1.0f);
         }
     }
 }

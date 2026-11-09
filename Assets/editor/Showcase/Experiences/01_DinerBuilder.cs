@@ -111,8 +111,8 @@ namespace Showcase.EditorTools.Experiences
 
             var exp = root.gameObject.AddComponent<DinerRushExperience>();
             exp.Title = "Pop-Up Diner Rush";
-            exp.Hint = "Tap the crates in the ticket's order · i = menu info";
-            exp.FocusPoint = new Vector3(0f, 0.22f, -0.05f);
+            exp.Hint = "Tap crates or tray tiles in the ticket's order";
+            exp.FocusPoint = new Vector3(0f, 0.22f, 0.1f);
             exp.FocusDistance = 3.2f;
             exp.FocusPitch = 50f;
             ShowcaseBuildContext.Set(exp, "m_piecePrefabs", Pieces.Select(n => (Object)ctx.Prefab(n)).ToArray());

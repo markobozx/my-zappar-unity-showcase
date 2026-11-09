@@ -48,7 +48,8 @@ namespace Showcase.Experiences.Nightclub
             Found = true;
             m_pulsing = false;
             StopAllCoroutines();
-            SetCollider(false);
+            // Stays tappable on the shelf: tapping a found item opens it in the checklist.
+            SetCollider(true);
             transform.localScale = HomeScale;
             transform.SetParent(slot, true);
             if (instant)

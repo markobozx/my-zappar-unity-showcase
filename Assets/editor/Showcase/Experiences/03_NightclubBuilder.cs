@@ -8,8 +8,8 @@ using UnityEngine.UI;
 namespace Showcase.EditorTools.Experiences
 {
     // Hidden-Object Nightclub: a compact, dim club diorama (dance floor, DJ booth, bar, lounge)
-    // with 8 lost items tucked around it, an inventory shelf along the front edge, a checklist
-    // board on the back wall and a hint pad.
+    // with 8 lost items tucked around it, an inventory shelf along the front edge and a checklist
+    // board on the back wall. Hints come from the screen tray checklist (see NightclubExperience).
     [ShowcaseExperienceBuilder(3, "nightclub", "Hidden-Object Nightclub", "Find 8 hidden items\nwith your flashlight.", "SM_Prop_DJ_Turntable_02")]
     public static class NightclubBuilder
     {
@@ -24,7 +24,7 @@ namespace Showcase.EditorTools.Experiences
             s_ctx = ctx;
             var exp = root.gameObject.AddComponent<NightclubExperience>();
             exp.Title = "Hidden-Object Nightclub";
-            exp.Hint = "Tap the 8 lost items hidden around the club";
+            exp.Hint = "Tap the lost items hidden around the club";
             exp.FocusPoint = new Vector3(0f, 0.2f, 0f);
             exp.FocusDistance = 3.9f;
             exp.FocusPitch = 46f;
@@ -131,22 +131,6 @@ namespace Showcase.EditorTools.Experiences
                 slots[i] = slot;
             }
             exp.ShelfSlots = slots;
-
-            // ---- hint pad ----
-            var hint = new GameObject("Hint Button").transform;
-            hint.SetParent(root, false);
-            hint.localPosition = new Vector3(1.3f, 0f, -0.84f);
-            ctx.Primitive(PrimitiveType.Cylinder, "Base", hint, new Vector3(0f, 0.02f, 0f), new Vector3(0.24f, 0.02f, 0.24f), new Color(0.2f, 0.16f, 0.3f), false);
-            ctx.Primitive(PrimitiveType.Cylinder, "Cap", hint, new Vector3(0f, 0.05f, 0f), new Vector3(0.19f, 0.015f, 0.19f), new Color(1f, 0.85f, 0.25f), false);
-            var hintCol = hint.gameObject.AddComponent<BoxCollider>();
-            hintCol.center = new Vector3(0f, 0.06f, 0f);
-            hintCol.size = new Vector3(0.28f, 0.14f, 0.28f);
-            hint.gameObject.AddComponent<NightclubHintButton>().Game = exp;
-            var hintCanvas = Ui.WorldCanvas("Label", hint, new Vector2(300, 110), 0.26f);
-            hintCanvas.transform.localPosition = new Vector3(0f, 0.085f, 0f);
-            hintCanvas.transform.localRotation = Quaternion.Euler(70f, 0f, 0f);
-            var hintText = Ui.Label(hintCanvas.transform, "HINT", 80, Ui.Ink, TextAnchor.MiddleCenter, FontStyle.Bold);
-            Ui.Stretch(hintText.rectTransform);
 
             BuildBoard(root, exp);
             BuildLights(root, exp);

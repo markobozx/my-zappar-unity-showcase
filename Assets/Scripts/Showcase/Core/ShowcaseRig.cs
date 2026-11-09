@@ -31,6 +31,9 @@ namespace Showcase
         void Awake()
         {
             Instance = this;
+            // Model previews render on their own layer far below the stage; keep them out of the scene cameras.
+            foreach (var cam in new[] { m_arCamera, m_arBackgroundCamera, m_freeCamera })
+                if (cam != null) cam.cullingMask &= ~(1 << ModelPreview.Layer);
             Apply(false);
         }
 

@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
@@ -7,8 +8,11 @@ using UnityEngine.UI;
 
 namespace Showcase.Experiences.Room
 {
-    // Room Makeover: a cut-away living room with five furniture slots. Tap a piece for its card,
-    // swap through the Lumo Home range, save favourites to the "My room" board, then finish.
+    // Room Makeover: a cut-away living room with five furniture slots. Tap a piece (or its floating
+    // tag) and the bottom tray opens with the Lumo Home range for that spot: thumbnails, a live 3D
+    // preview and price. Picking a tile swaps the piece in the room at the same time. Save favourites
+    // to the "My room" board on the wall, then Finish.
+    // UI split: screen tray = choosing; world = what things are (tags over each piece, the board).
     public class RoomExperience : ShowcaseExperience
     {
         public const string Brand = "Lumo Home";
@@ -22,8 +26,9 @@ namespace Showcase.Experiences.Room
         private Text m_total;
         private Transform m_boardCanvas;
         private RoomSlot m_selected;
-        private WorldCard m_card;
         private bool m_finished;
+        private readonly Dictionary<RoomSlot, WorldTag> m_tags = new Dictionary<RoomSlot, WorldTag>();
+        private List<TrayOption> m_options;
         // Rest scales, so punches cut short by Exit or overlapped by quick taps can't leave things squashed.
         private readonly Dictionary<Transform, Vector3> m_restScales = new Dictionary<Transform, Vector3>();
 
@@ -31,7 +36,8 @@ namespace Showcase.Experiences.Room
         public int SavedCount => m_slots.Count(s => s.Saved != null);
         public int Total => m_slots.Where(s => s.Saved != null).Sum(s => s.Saved.Price);
         public bool Finished => m_finished;
-        public RoomSlot Selected => m_card != null ? m_selected : null;
+        public RoomSlot Selected => Tray != null && Tray.IsOpen ? m_selected : null;
+        private static ShowcaseTray Tray => ShowcaseTray.Instance;
 
         public static string Euro(int amount) => "€" + amount.ToString("N0", CultureInfo.InvariantCulture);
 
@@ -43,15 +49,12 @@ namespace Showcase.Experiences.Room
 
         protected override void OnExit()
         {
-            m_card = null;
-            m_selected = null;
+            CloseTray();
         }
 
         public void ResetRoom()
         {
-            WorldCard.CloseOpen();
-            m_card = null;
-            m_selected = null;
+            CloseTray();
             m_finished = false;
             foreach (var s in m_slots)
                 s.ResetSlot();
@@ -60,9 +63,10 @@ namespace Showcase.Experiences.Room
             if (Hud != null)
                 Hud.HideResult();
             RefreshBoard();
+            RefreshTags();
         }
 
-        // ---- Interaction (taps and card buttons all come through here) ----
+        // ---- Interaction (taps and tray buttons all come through here) ----
 
         public void Select(RoomSlot slot)
         {
@@ -71,19 +75,46 @@ namespace Showcase.Experiences.Room
             m_selected = slot;
             StartCoroutine(Bounce(slot.transform, 0.12f));
             Fx.Play(FxKind.Sparkle, slot.transform.position + slot.transform.up * 0.15f, 0.6f);
-            m_card = WorldCard.Show(slot.transform, slot.CardOffset, slot.Current.Name, CardBody(slot), 0.82f,
-                ("◄ Prev", () => Cycle(slot, -1)),
-                ("Next ►", () => Cycle(slot, 1)),
-                (SaveLabel(slot), () => Save(slot)));
+            // Bring the piece into view above the tray (free camera only; in AR the user moves).
+            FreeCamera.Instance?.Frame(transform.InverseTransformPoint(slot.transform.position) + Vector3.up * 0.15f, 2.6f, 40f);
+
+            m_options = slot.Variants.Select(v => new TrayOption(v.Name, Euro(v.Price), Brand + " · " + v.Material, v.Model)).ToList();
+            Tray?.Open(slot.Category + "  ·  " + (Array.IndexOf(m_slots, slot) + 1) + "/" + m_slots.Length, m_options, slot.Index, i => Pick(slot, i),
+                ("♥ Save", () => Save(slot)),
+                ("Next piece ›", NextSlot),
+                ("Finish √", Finish));
+            RefreshTray(slot);
+            RefreshTags();
+        }
+
+        // Tray tile picked: the room changes with it.
+        public void Pick(RoomSlot slot, int index)
+        {
+            if (m_finished || index == slot.Index)
+                return;
+            Fx.Play(FxKind.Poof, slot.transform.position + slot.transform.up * 0.12f, 0.8f);
+            slot.Show(index, true);
+            RefreshTray(slot);
+            RefreshTags();
         }
 
         public void Cycle(RoomSlot slot, int step)
         {
-            if (m_finished)
-                return;
-            Fx.Play(FxKind.Poof, slot.transform.position + slot.transform.up * 0.12f, 0.8f);
-            slot.Cycle(step);
-            RefreshCard(slot);
+            int n = slot.Variants.Length;
+            int index = ((slot.Index + step) % n + n) % n;
+            if (Tray != null && Tray.IsOpen && m_selected == slot) Tray.Select(index);
+            else Pick(slot, index);
+        }
+
+        public void NextSlot()
+        {
+            int i = m_selected != null ? Array.IndexOf(m_slots, m_selected) : -1;
+            // Prefer the next spot that still has nothing saved.
+            for (int k = 1; k <= m_slots.Length; k++)
+            {
+                var s = m_slots[(i + k) % m_slots.Length];
+                if (s.Saved == null || k == m_slots.Length) { Select(s); return; }
+            }
         }
 
         public void Save(RoomSlot slot)
@@ -105,7 +136,25 @@ namespace Showcase.Experiences.Room
             }
             Hud?.Toast((replaced ? "Swapped in " : "♥ Saved ") + slot.Current.Name);
             RefreshBoard();
-            RefreshCard(slot);
+            RefreshTray(slot);
+            RefreshTags();
+        }
+
+        private void CloseTray()
+        {
+            if (m_selected != null && Tray != null && Tray.IsOpen)
+                Tray.Close();
+            m_selected = null;
+            m_options = null;
+        }
+
+        private void OnTrayClosed()
+        {
+            if (m_selected == null)
+                return;
+            m_selected = null;
+            FreeCamera.Instance?.Frame(FocusPoint, FocusDistance, FocusPitch);
+            RefreshTags();
         }
 
         public void Finish()
@@ -119,8 +168,7 @@ namespace Showcase.Experiences.Room
                 return;
             }
             m_finished = true;
-            WorldCard.CloseOpen();
-            m_card = null;
+            CloseTray();
             if (m_finish != null)
             {
                 StartCoroutine(Bounce(m_finish, 0.15f));
@@ -160,24 +208,37 @@ namespace Showcase.Experiences.Room
 
         // ---- Card & board ----
 
-        private static string CardBody(RoomSlot slot)
+        private void RefreshTray(RoomSlot slot)
         {
-            return Brand + " · <b>" + Euro(slot.Current.Price) + "</b>   <size=26>" + (slot.Index + 1) + "/" + slot.Variants.Length + "</size>\n" + slot.Current.Material;
+            if (Tray == null || !Tray.IsOpen || m_selected != slot || m_options == null)
+                return;
+            for (int i = 0; i < m_options.Count; i++)
+                m_options[i].Badge = i == slot.SavedIndex ? "♥" : null;
+            Tray.Refresh();
+            Tray.SetAction(0, slot.IsCurrentSaved ? "♥ Saved" : "♥ Save", slot.IsCurrentSaved ? Ui.Good : Ui.Accent);
+            Tray.SetAction(2, "Finish √", SavedCount > 0 ? Ui.Good : Ui.Muted);
         }
 
-        private static string SaveLabel(RoomSlot slot) => slot.IsCurrentSaved ? "♥ Saved" : "♥ Save";
-
-        private void RefreshCard(RoomSlot slot)
+        // World tags: what each spot is and whether it's done. The one being edited hides its tag
+        // (the tray shows it), the rest pulse until something is saved there.
+        private void RefreshTags()
         {
-            if (m_card == null || m_selected != slot)
-                return;
-            m_card.Title.text = slot.Current.Name;
-            m_card.Body.text = CardBody(slot);
-            var save = m_card.GetComponentsInChildren<Button>().LastOrDefault(b => b.name != "Close");
-            if (save != null)
+            foreach (var slot in m_slots)
             {
-                Ui.SetButtonLabel(save, SaveLabel(slot));
-                save.GetComponent<Image>().color = slot.IsCurrentSaved ? Ui.Good : Ui.Accent2;
+                if (!m_tags.TryGetValue(slot, out var tag) || tag == null)
+                    m_tags[slot] = tag = WorldTag.Create(slot.transform, slot.CardOffset - new Vector3(0f, 0.18f, 0f), slot.Category, 0.14f);
+                bool editing = m_selected == slot && Tray != null && Tray.IsOpen;
+                tag.Show(!editing && !m_finished);
+                if (slot.Saved != null)
+                {
+                    tag.Set("♥ " + slot.Saved.Name + "  " + Euro(slot.Saved.Price), new Color(0.24f, 0.6f, 0.36f, 0.92f));
+                    tag.Pulse(false);
+                }
+                else
+                {
+                    tag.Set(slot.Category + "  ›", new Color(0.13f, 0.12f, 0.2f, 0.88f));
+                    tag.Pulse(true);
+                }
             }
         }
 
@@ -188,7 +249,7 @@ namespace Showcase.Experiences.Room
                 for (int i = 0; i < m_slots.Length; i++)
                 {
                     var saved = m_slots[i].Saved;
-                    m_rowNames[i].text = saved != null ? "♥ " + saved.Name : m_slots[i].Category + "  <size=34>—  tap to choose</size>";
+                    m_rowNames[i].text = saved != null ? "♥ " + saved.Name : m_slots[i].Category + "  —";
                     m_rowNames[i].color = saved != null ? Ui.Ink : Ui.Muted;
                     m_rowPrices[i].text = saved != null ? Euro(saved.Price) : "";
                 }
@@ -206,6 +267,11 @@ namespace Showcase.Experiences.Room
                 BuildBoard();
             if (m_finish != null && m_finish.Find("Label") == null)
                 BuildFinishLabel();
+            if (Tray != null)
+            {
+                Tray.Closed -= OnTrayClosed;
+                Tray.Closed += OnTrayClosed;
+            }
         }
 
         private void BuildBoard()
@@ -295,8 +361,11 @@ namespace Showcase.Experiences.Room
             foreach (var slot in m_slots)
             {
                 slot.OnTap(default);
-                if (Selected != slot) Debug.LogError("[SELFTEST] tapping " + slot.Category + " did not open its card");
-                Cycle(slot, 1);
+                if (Selected != slot) Debug.LogError("[SELFTEST] tapping " + slot.Category + " did not open the tray");
+                if (Tray.Options.Count != slot.Variants.Length) Debug.LogError("[SELFTEST] tray shows " + Tray.Options.Count + " options for " + slot.Category);
+                Tray.Select(1);   // like tapping the second tile
+                if (Tray.Selected != 1) Debug.LogError("[SELFTEST] tray selection did not move");
+                if (slot == m_slots[0]) { yield return new WaitForSeconds(0.6f); Snapshot("tray"); }
                 yield return new WaitForSeconds(0.45f);
                 if (slot.Index != 1) Debug.LogError("[SELFTEST] " + slot.Category + " did not advance to variant 2");
                 for (int i = 0; i < slot.Variants.Length; i++)
@@ -310,7 +379,7 @@ namespace Showcase.Experiences.Room
             for (int i = 0; i < 3; i++)
             {
                 Select(m_slots[i]);
-                Save(m_slots[i]);
+                Tray.Press(0);   // "♥ Save"
                 expected += m_slots[i].Variants[1].Price;
                 yield return new WaitForSeconds(0.3f);
             }
@@ -319,8 +388,9 @@ namespace Showcase.Experiences.Room
             if (BoardTotalText != Euro(expected)) Debug.LogError("[SELFTEST] board shows '" + BoardTotalText + "', expected " + Euro(expected));
             Debug.Log("[SELFTEST] room: 3 saved, total " + Euro(Total));
 
-            Finish();
+            Tray.Press(2);   // "Finish √"
             yield return new WaitForSeconds(1.0f);
+            if (Tray.IsOpen) Debug.LogError("[SELFTEST] tray still open after finishing");
             if (!m_finished) Debug.LogError("[SELFTEST] finish did not end the round");
             if (Hud != null && !Hud.ResultVisible) Debug.LogError("[SELFTEST] result screen not shown");
         }

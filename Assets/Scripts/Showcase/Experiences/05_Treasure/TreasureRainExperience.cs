@@ -5,15 +5,18 @@ using UnityEngine.UI;
 
 namespace Showcase.Experiences.Treasure
 {
-    // Treasure Rain: tap START, then tap the treasure raining onto the vault floor for 45 seconds.
+    // Treasure Rain: the tray shows what falls and what it's worth (picking a tile drops a sample);
+    // "Start" (or the START pad) begins 45 seconds of tapping the treasure raining onto the vault floor.
     // Gold 1, coins 2, gems 5, golden product box 20, bomb crate -10. Three quick collects in a row
     // double the points until the streak breaks. Items are pooled (at most MaxAlive at once).
+    // Taps that just miss still collect the nearest treasure (TapAssist), so it's easy on a phone.
     public class TreasureRainExperience : ShowcaseExperience
     {
         public const float RoundSeconds = 45f;
         public const int MaxAlive = 14;
         public const float ComboWindow = 1.6f;
         public const int ComboStreak = 3;
+        public const float TapAssist = 0.2f;     // stage units from the tap ray that still count as a hit
         const string BestKey = "showcase.treasure.best";
 
         [SerializeField] private TreasureItem[] m_templates;       // indexed by TreasureKind
@@ -45,6 +48,11 @@ namespace Showcase.Experiences.Treasure
         private Vector3 m_startScale = Vector3.one;
         private Vector3 m_chestScale = Vector3.one;
         private Coroutine m_startRoutine;
+        private TreasureItem m_sample;
+        private List<TrayOption> m_options;
+
+        static readonly TreasureKind[] TrayOrder = { TreasureKind.Gold, TreasureKind.Coins, TreasureKind.Gems, TreasureKind.Golden, TreasureKind.Bomb };
+        private static ShowcaseTray Tray => ShowcaseTray.Instance;
 
         public bool Running => m_running;
         public int Score => m_score;
@@ -67,8 +75,17 @@ namespace Showcase.Experiences.Treasure
             if (m_chest != null) m_chestScale = m_chest.localScale;
         }
 
-        protected override void OnEnter()
+        void OnEnable() => ShowcaseInput.Tapped += OnTapped;
+        void OnDisable() => ShowcaseInput.Tapped -= OnTapped;
+
+        protected override void OnEnter() => ResetToStart();
+
+        // Waiting for the round: START pad up, tray with the treasure kinds open.
+        public void ResetToStart()
         {
+            if (m_startRoutine != null) StopCoroutine(m_startRoutine);
+            m_startRoutine = null;
+            if (Hud != null) Hud.HideResult();
             Cleanup();
             m_running = false;
             m_score = 0;
@@ -80,20 +97,148 @@ namespace Showcase.Experiences.Treasure
             {
                 Hud.SetScore("");
                 Hud.SetTimer("");
-                Hud.SetHint("Tap START, then grab the falling treasure!");
+                Hud.SetHint("Tap the START pad to play!");
             }
+            if (Tray != null)
+            {
+                Tray.Closed -= OnTrayClosed;
+                Tray.Closed += OnTrayClosed;
+            }
+            OpenTray();
         }
 
         protected override void OnExit()
         {
             m_running = false;
+            if (Tray != null)
+            {
+                Tray.Closed -= OnTrayClosed;
+                if (m_options != null && Tray.IsOpen) Tray.Close();
+            }
+            m_options = null;
             Cleanup();
+        }
+
+        // ---- Tray: what falls and what it's worth; the big Start button ----
+
+        private static string Points(int v) => (v > 0 ? "+" : "−") + Mathf.Abs(v) + (Mathf.Abs(v) == 1 ? " pt" : " pts");
+
+        private static string KindName(TreasureKind k)
+        {
+            switch (k)
+            {
+                case TreasureKind.Gold: return "Gold bar";
+                case TreasureKind.Coins: return "Coins";
+                case TreasureKind.Gems: return "Gems";
+                case TreasureKind.Golden: return "Golden Nova box";
+                default: return "Bomb crate";
+            }
+        }
+
+        private static string KindDetail(TreasureKind k)
+        {
+            switch (k)
+            {
+                case TreasureKind.Gold: return "Falls all the time. Tap 3 in a row quickly for a x2 combo!";
+                case TreasureKind.Coins: return "A stack of Nova coins, twice the gold.";
+                case TreasureKind.Gems: return "Sparkly and rarer. Worth five gold bars.";
+                case TreasureKind.Golden: return "Only one at a time. Grab it before it vanishes!";
+                default: return "Don't touch! It blows up your combo and points.";
+            }
+        }
+
+        public void OpenTray()
+        {
+            if (Tray == null || m_templates == null)
+                return;
+            m_options = new List<TrayOption>();
+            foreach (TreasureKind k in TrayOrder)
+            {
+                TreasureItem t = (int)k < m_templates.Length ? m_templates[(int)k] : null;
+                int value = t != null ? t.Value : 0;
+                m_options.Add(new TrayOption(KindName(k), Points(value), KindDetail(k), t != null ? t.gameObject : null)
+                {
+                    Badge = k == TreasureKind.Bomb ? "!" : null,
+                });
+            }
+            int best = BestScore;
+            Tray.Open("Treasure Rain  ·  45 s" + (best > 0 ? "  ·  Best " + best : ""), m_options, 0, i => DropSample(TrayOrder[i]),
+                ("Start  ►", StartRound));
+        }
+
+        private void OnTrayClosed()
+        {
+            if (m_options == null)
+                return;
+            m_options = null;
+            // Closed with × before playing: the START pad in the vault still starts the round.
+            if (!m_running && Hud != null && !Hud.ResultVisible)
+                Hud.SetHint("Tap the START pad to play!");
+        }
+
+        // Picking a tile drops one of those onto the vault floor with its points, so the tray and the
+        // scene show the same thing. Samples can't be collected and vanish like missed treasure.
+        public TreasureItem DropSample(TreasureKind kind)
+        {
+            if (m_running)
+                return null;
+            if (m_sample != null && m_sample.Live && m_alive.Contains(m_sample))
+            {
+                Fx.Play(FxKind.Poof, m_sample.transform.position, 0.5f);
+                Release(m_sample);
+            }
+            Vector3 local = new Vector3(0.62f, 0.75f, -0.35f);
+            m_sample = Spawn(kind, local);
+            if (m_sample != null)
+            {
+                Fx.Play(FxKind.Sparkle, transform.TransformPoint(local), 0.6f);
+                ShowPop(transform.TransformPoint(new Vector3(local.x, 0.12f, local.z)), Points(m_sample.Value),
+                    kind == TreasureKind.Bomb ? new Color(1f, 0.3f, 0.25f) : kind == TreasureKind.Gems ? new Color(0.55f, 0.9f, 1f) : new Color(1f, 0.85f, 0.2f), 1f);
+            }
+            return m_sample;
+        }
+
+        // A tap that hit no treasure still collects the live item closest to the tap ray, if it's near.
+        private void OnTapped(Ray ray, bool hitAny, RaycastHit hit)
+        {
+            if (!isActiveAndEnabled || !m_running)
+                return;
+            if (hitAny && hit.collider != null && hit.collider.GetComponentInParent<TreasureItem>() != null)
+                return;   // TreasureItem.OnTap already handled it
+            TreasureItem item = NearestToRay(ray, TapAssist);
+            if (item != null)
+                Collect(item, item.transform.position);
+        }
+
+        public TreasureItem NearestToRay(Ray ray, float maxStageDistance)
+        {
+            float scale = Mathf.Max(transform.lossyScale.y, 1e-4f);
+            TreasureItem best = null;
+            float bestD = maxStageDistance;
+            foreach (TreasureItem it in m_alive)
+            {
+                if (it == null || !it.Live) continue;
+                Vector3 to = it.transform.position - ray.origin;
+                if (Vector3.Dot(to, ray.direction) <= 0f) continue;
+                float d = Vector3.Cross(ray.direction.normalized, to).magnitude / scale;
+                // Bombs need a real hit: assisting into a bomb would feel unfair.
+                if (it.Kind == TreasureKind.Bomb) continue;
+                if (d < bestD) { bestD = d; best = it; }
+            }
+            return best;
         }
 
         // Called by the START button and the "Play again" result button.
         public void StartRound()
         {
+            if (m_running)
+                return;
             if (Hud != null) Hud.HideResult();
+            if (Tray != null && m_options != null && Tray.IsOpen)
+            {
+                m_options = null;   // not a "closed with ×"
+                Tray.Close();
+            }
             Cleanup();
             if (m_chest != null) m_chest.localScale = m_chestScale;
             m_running = true;
@@ -112,7 +257,7 @@ namespace Showcase.Experiences.Treasure
             }
             if (Hud != null)
             {
-                Hud.SetHint("3 quick taps in a row = x2 · avoid bombs!");
+                Hud.SetHint("Tap the treasure · 3 quick taps = x2 · avoid bombs!");
                 Hud.Toast("GO! 45 seconds");
             }
             UpdateHud();
@@ -186,7 +331,9 @@ namespace Showcase.Experiences.Treasure
         }
 
         // Spawns one item of `kind` from the pool above the stage. At the cap the oldest item makes room.
-        public TreasureItem Spawn(TreasureKind kind)
+        public TreasureItem Spawn(TreasureKind kind) => Spawn(kind, null);
+
+        private TreasureItem Spawn(TreasureKind kind, Vector3? at)
         {
             if (m_templates == null || (int)kind >= m_templates.Length || m_templates[(int)kind] == null)
                 return null;
@@ -199,7 +346,7 @@ namespace Showcase.Experiences.Treasure
             else
                 item = CreateInstance(kind);
 
-            Vector3 local = new Vector3(Random.Range(-m_rainHalfSize.x, m_rainHalfSize.x), m_rainHeight,
+            Vector3 local = at ?? new Vector3(Random.Range(-m_rainHalfSize.x, m_rainHalfSize.x), m_rainHeight,
                 m_rainCenterZ + Random.Range(-m_rainHalfSize.y, m_rainHalfSize.y));
             item.transform.position = transform.TransformPoint(local);
             item.transform.rotation = transform.rotation * Random.rotation;
@@ -238,7 +385,7 @@ namespace Showcase.Experiences.Treasure
             BoxCollider tap = tapZone.AddComponent<BoxCollider>();
             tap.isTrigger = true;
             tap.center = box.center;
-            tap.size = box.size * 1.45f;
+            tap.size = Vector3.Max(box.size * 1.7f, Vector3.one * 0.26f / Mathf.Max(go.transform.lossyScale.x / Mathf.Max(transform.lossyScale.x, 1e-4f), 1e-4f));
 
             Rigidbody rb = go.AddComponent<Rigidbody>();
             rb.mass = 0.3f;
@@ -384,6 +531,7 @@ namespace Showcase.Experiences.Treasure
                 StartCoroutine(Tween.Punch(m_chest, 0.2f, 0.4f));
             }
             ShowStartButton(true);
+            if (Hud != null) Hud.SetHint("Play again, or tap the START pad");
             UpdateHud();
             ShowResultPanel();
         }
@@ -482,7 +630,7 @@ namespace Showcase.Experiences.Treasure
                 m_popRoot = new GameObject("Pop Texts").transform;
                 m_popRoot.SetParent(transform, false);
             }
-            Canvas canvas = Ui.WorldCanvas("Pop", m_popRoot, new Vector2(400, 140), 0.5f);
+            Canvas canvas = Ui.WorldCanvas("Pop", m_popRoot, new Vector2(400, 140), 0.8f);
             Text label = Ui.Label(canvas.transform, "", 96, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
             Ui.Stretch(label.rectTransform);
             label.horizontalOverflow = HorizontalWrapMode.Overflow;
@@ -499,7 +647,7 @@ namespace Showcase.Experiences.Treasure
         private IEnumerator PopRoutine(PopText pop, Vector3 localStart, float size)
         {
             Transform t = pop.Canvas.transform;
-            float baseScale = 0.5f / 400f * size;
+            float baseScale = 0.8f / 400f * size;
             pop.Canvas.gameObject.SetActive(true);
             Color c = pop.Label.color;
             for (float a = 0f; a < 1f; a += Time.deltaTime / 0.9f)
@@ -546,34 +694,26 @@ namespace Showcase.Experiences.Treasure
             ShowResultPanel();
         }
 
-        // Extra play-test screenshots of mid-round states (editor only; the harness only shoots start/end).
-        private static void DebugShot(string name)
-        {
-#if UNITY_EDITOR
-            Camera cam = ShowcaseRig.ActiveCamera;
-            if (cam == null) return;
-            string dir = "Builds/Preview/treasure";
-            System.IO.Directory.CreateDirectory(dir);
-            var rt = new RenderTexture(720, 1280, 24);
-            RenderTexture prev = cam.targetTexture;
-            cam.targetTexture = rt;
-            cam.Render();
-            RenderTexture.active = rt;
-            var tex = new Texture2D(rt.width, rt.height, TextureFormat.RGB24, false);
-            tex.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0);
-            tex.Apply();
-            System.IO.File.WriteAllBytes(dir + "/" + name + ".png", tex.EncodeToPNG());
-            RenderTexture.active = null;
-            cam.targetTexture = prev;
-            DestroyImmediate(rt);
-            DestroyImmediate(tex);
-#endif
-        }
-
         public override IEnumerator SelfTest()
         {
-            StartRound();
-            if (!m_running) Debug.LogError("[SELFTEST] round did not start");
+            // Before the round: the tray lists the five kinds with thumbnails; picking one drops a sample.
+            if (Tray == null) { Debug.LogError("[SELFTEST] no tray"); yield break; }
+            ResetToStart();   // the harness tapped START before the self test
+            yield return new WaitForSeconds(1.8f);   // let the harness tap's "GO!" toast fade
+            if (m_running) Debug.LogError("[SELFTEST] round running after reset");
+            if (!Tray.IsOpen) Debug.LogError("[SELFTEST] tray not open before the round");
+            if (Tray.Options.Count != TrayOrder.Length) Debug.LogError("[SELFTEST] tray shows " + Tray.Options.Count + " kinds, expected " + TrayOrder.Length);
+            Tray.Select(3);   // like tapping the Golden box tile
+            if (m_sample == null || m_sample.Kind != TreasureKind.Golden) Debug.LogError("[SELFTEST] picking the Golden tile did not drop a sample");
+            int scoreBefore = m_score;
+            if (m_sample != null) m_sample.OnTap(new RaycastHit { point = m_sample.transform.position });
+            if (m_score != scoreBefore) Debug.LogError("[SELFTEST] a sample scored before the round");
+            yield return new WaitForSeconds(0.7f);
+            Snapshot("tray");
+
+            Tray.Press(0);   // "Start ►"
+            if (!m_running) Debug.LogError("[SELFTEST] Start in the tray did not start the round");
+            if (Tray.IsOpen) Debug.LogError("[SELFTEST] tray still open during the round");
             if (m_startButton != null && m_startButton.gameObject.activeSelf)
             {
                 yield return new WaitForSeconds(0.5f);
@@ -586,7 +726,7 @@ namespace Showcase.Experiences.Treasure
             if (m_spawnedThisRound < 5) Debug.LogError("[SELFTEST] only " + m_spawnedThisRound + " items spawned in 20 s");
             if (m_alive.Count > MaxAlive) Debug.LogError("[SELFTEST] " + m_alive.Count + " items alive, cap is " + MaxAlive);
             yield return new WaitForSeconds(1.2f);   // let a few land
-            DebugShot("play-rain");
+            Snapshot("rain");
 
             // Three quick non-bomb collects: the third gets the x2 combo.
             for (int i = 0; i < ComboStreak; i++)
@@ -601,23 +741,45 @@ namespace Showcase.Experiences.Treasure
             }
             if (Multiplier != 2) Debug.LogError("[SELFTEST] multiplier " + Multiplier + " after " + ComboStreak + " quick collects, expected 2");
             yield return new WaitForSeconds(0.3f);
-            DebugShot("play-collect");
+            Snapshot("collect");
 
             TreasureItem bomb = Spawn(TreasureKind.Bomb);
             TreasureItem golden = Spawn(TreasureKind.Golden);
             yield return new WaitForSeconds(0.9f);
-            DebugShot("play-specials");
             int beforeBomb = m_score;
             bomb.OnTap(new RaycastHit { point = bomb.transform.position });
             if (m_score != Mathf.Max(0, beforeBomb - 10)) Debug.LogError("[SELFTEST] bomb: score " + beforeBomb + " -> " + m_score + ", expected -10");
             if (Multiplier != 1) Debug.LogError("[SELFTEST] bomb should reset the combo, multiplier is " + Multiplier);
             yield return new WaitForSeconds(0.25f);
-            DebugShot("play-bomb");
+
+            // A tap that just misses a gem still collects it (tap assist); bombs are never assisted.
+            TreasureItem near = Spawn(TreasureKind.Gems);
+            TreasureItem nearBomb = Spawn(TreasureKind.Bomb);
+            yield return new WaitForSeconds(0.6f);
+            for (int i = m_alive.Count - 1; i >= 0; i--)   // nothing else near the test ray
+                if (m_alive[i] != near && m_alive[i] != nearBomb) Release(m_alive[i]);
+            Camera cam = ShowcaseRig.ActiveCamera;
+            if (cam != null && near != null && near.Live)
+            {
+                float s = transform.lossyScale.y;
+                Vector3 aim = near.transform.position + cam.transform.right * 0.12f * s;
+                int beforeNear = m_score;
+                OnTapped(new Ray(cam.transform.position, (aim - cam.transform.position).normalized), false, default);
+                if (near.Live || m_score <= beforeNear) Debug.LogError("[SELFTEST] near-miss tap did not collect the gem");
+                if (nearBomb != null && nearBomb.Live)
+                {
+                    int beforeB = m_score;
+                    Vector3 aimB = nearBomb.transform.position + cam.transform.right * 0.12f * s;
+                    OnTapped(new Ray(cam.transform.position, (aimB - cam.transform.position).normalized), false, default);
+                    if (m_score < beforeB) Debug.LogError("[SELFTEST] near-miss tap set off a bomb");
+                }
+            }
+            Snapshot("bomb");
 
             if (golden == null || !golden.Live) golden = Spawn(TreasureKind.Golden);   // the blast may have knocked it off the stage
             int beforeGolden = m_score;
             golden.OnTap(new RaycastHit { point = golden.transform.position });
-            if (m_score != beforeGolden + 20) Debug.LogError("[SELFTEST] golden box: score " + beforeGolden + " -> " + m_score + ", expected +20");
+            if (m_score != beforeGolden + 20 * Multiplier) Debug.LogError("[SELFTEST] golden box: score " + beforeGolden + " -> " + m_score + ", expected +20");
             yield return new WaitForSeconds(1.2f);
 
             int finalScore = m_score;

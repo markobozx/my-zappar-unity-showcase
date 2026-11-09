@@ -55,5 +55,9 @@ namespace Showcase
         // like a player would, e.g. call your ITappable.OnTap / game methods in order, yield between
         // steps, and report problems with Debug.LogError("[SELFTEST] ...") (any error fails the test).
         public virtual System.Collections.IEnumerator SelfTest() { yield break; }
+
+        // Play test only: save a screenshot (with screen UI) as Builds/Preview/<Id>/play-<name>.png.
+        public static event System.Action<ShowcaseExperience, string> SnapshotRequested;
+        protected void Snapshot(string name) => SnapshotRequested?.Invoke(this, name);
     }
 }

@@ -7,7 +7,7 @@ using UnityEngine.UI;
 namespace Showcase.EditorTools.Experiences
 {
     // Little Lab: a long bench with six ingredient vials on two racks, a big glass beaker in the
-    // middle, a RESET button in front of it, a MIX read-out on the bench front, a clue board at the
+    // middle, a RESET button in front of it (ingredient choice itself lives in the screen tray), a MIX read-out on the bench front, a clue board at the
     // back and Cosmic Retro lab machines around the edges.
     [ShowcaseExperienceBuilder(6, "lab", "Little Lab", "Mix 3 ingredients to find\nthe hero formula.", "Retro_laboratory_DNA_Reactor_Tube")]
     public static class LabBuilder
@@ -63,7 +63,7 @@ namespace Showcase.EditorTools.Experiences
 
             exp.Id = "lab";
             exp.Title = "Little Lab";
-            exp.Hint = "Tap 3 vials to mix a formula.\nRead the clue board to find the hero formula!";
+            exp.Hint = "Tap the vials or open the rack to mix 3 ingredients.\nThe clue board hints at the hero formula!";
             exp.FocusPoint = new Vector3(0f, 0.3f, 0.12f);
             exp.FocusDistance = 4.3f;
             exp.FocusPitch = 48f;
@@ -162,49 +162,13 @@ namespace Showcase.EditorTools.Experiences
             box.center = new Vector3(0f, 0.01f, 0f);
             box.size = new Vector3(0.2f, 0.32f, 0.2f);
 
-            // Floating name tag (stays put while the vial pours).
-            var tag = new GameObject("Tag " + ing.Name).transform;
-            tag.SetParent(root, false);
-            tag.localPosition = new Vector3(x, RackTop + VialHeight + 0.085f, VialZ);
-            tag.gameObject.AddComponent<Billboard>();
-            var canvas = Ui.WorldCanvas("Canvas", tag, new Vector2(320, 96), 0.28f);
-            var bg = Ui.Panel(canvas.transform, PanelInk, "Background");
-            Ui.Stretch(bg.rectTransform);
-            bg.raycastTarget = false;
-            var text = Ui.Label(bg.transform, ing.Name, 60, index == LabData.Charcoal ? new Color(0.75f, 0.72f, 0.82f) : ing.Color, TextAnchor.MiddleCenter, FontStyle.Bold, "Name");
-            Ui.Stretch(text.rectTransform, 6, 6, 0, 0);
-            text.horizontalOverflow = HorizontalWrapMode.Overflow;
-
+            // Name tags are runtime WorldTags (LabExperience), on fixed anchors so they stay put while a vial pours.
             var comp = vial.AddComponent<LabVial>();
             comp.Index = index;
             comp.MouthY = 0.118f;
             ShowcaseBuildContext.Set(comp, "m_owner", owner);
             ShowcaseBuildContext.Set(comp, "m_cork", cork.transform);
-            ShowcaseBuildContext.Set(comp, "m_tagBackground", bg);
-            ShowcaseBuildContext.Set(comp, "m_tagText", text);
-
-            BuildInfoButton(root, owner, index, new Vector3(x, BenchTop + 0.055f, VialZ - 0.19f));
             return comp;
-        }
-
-        static void BuildInfoButton(Transform root, LabExperience owner, int index, Vector3 pos)
-        {
-            var go = new GameObject("Info " + LabData.Ingredients[index].Name);
-            go.transform.SetParent(root, false);
-            go.transform.localPosition = pos;
-            go.AddComponent<Billboard>().YawOnly = false;
-            var col = go.AddComponent<SphereCollider>();
-            col.radius = 0.065f;
-            var canvas = Ui.WorldCanvas("Canvas", go.transform, new Vector2(120, 120), 0.095f);
-            var knob = Ui.Panel(canvas.transform, Ui.Accent2, "Circle");
-            knob.sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Knob.psd");
-            Ui.Stretch(knob.rectTransform);
-            knob.raycastTarget = false;
-            var ring = Ui.Label(knob.transform, "i", 88, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold, "I");
-            Ui.Stretch(ring.rectTransform);
-            var comp = go.AddComponent<LabInfoButton>();
-            comp.Index = index;
-            ShowcaseBuildContext.Set(comp, "m_owner", owner);
         }
 
         static LabResetButton BuildResetButton(ShowcaseBuildContext ctx, Transform root, LabExperience owner)

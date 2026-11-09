@@ -3,8 +3,8 @@ using UnityEngine.UI;
 
 namespace Showcase.Experiences.Diner
 {
-    // One ingredient crate. Tapping it sends its ingredient to the plate; the small "i" button on
-    // its label shows the ingredient's menu facts.
+    // One ingredient crate. Tapping it sends its ingredient to the plate (same as its tile in the
+    // ingredient tray, which also shows the menu facts).
     public class DinerBin : MonoBehaviour, ITappable
     {
         public Ingredient Ingredient;
@@ -37,16 +37,10 @@ namespace Showcase.Experiences.Diner
         public void OnTap(RaycastHit hit)
         {
             if (m_game != null)
-                m_game.TapIngredient(this);
+                m_game.TapCrate(this);
         }
 
-        public void ShowInfo()
-        {
-            var info = DinerMenu.Info(Ingredient);
-            WorldCard.Show(transform, new Vector3(0f, 0.42f, 0f), info.title, info.body + "\n<color=#E8735B>" + DinerMenu.Brand + " · fresh daily</color>");
-        }
-
-        // A sticker on the crate's front face: ingredient name plus an "i" button.
+        // A sticker on the crate's front face with the ingredient name.
         private void BuildLabel()
         {
             var holder = new GameObject("Label").transform;
@@ -56,15 +50,13 @@ namespace Showcase.Experiences.Diner
             var canvas = Ui.WorldCanvas("Canvas", holder, new Vector2(360, 96), FrontWidth);
             m_labelBg = Ui.Panel(canvas.transform, Ui.Paper, "Background");
             Ui.Stretch(m_labelBg.rectTransform);
-            // Only the "i" button may catch UI raycasts; otherwise taps on the crate's front are eaten as UI.
+            // Display only; otherwise taps on the crate's front are eaten as UI.
             m_labelBg.raycastTarget = false;
             var stripe = Ui.Panel(m_labelBg.transform, Ui.Accent, "Stripe");
             stripe.raycastTarget = false;
             Ui.Place(stripe.rectTransform, new Vector2(0f, 0.5f), new Vector2(10, 96), Vector2.zero);
-            var name = Ui.Label(m_labelBg.transform, DinerMenu.Info(Ingredient).label, 46, Ui.Ink, TextAnchor.MiddleLeft, FontStyle.Bold, "Name");
-            Ui.Place(name.rectTransform, new Vector2(0f, 0.5f), new Vector2(260, 90), new Vector2(24, 0));
-            var info = Ui.Button(m_labelBg.transform, "i", Ui.Accent2, ShowInfo, 52, "Info");
-            Ui.Place((RectTransform)info.transform, new Vector2(1f, 0.5f), new Vector2(76, 76), new Vector2(-10, 0));
+            var name = Ui.Label(m_labelBg.transform, DinerMenu.Info(Ingredient).label, 56, Ui.Ink, TextAnchor.MiddleCenter, FontStyle.Bold, "Name");
+            Ui.Stretch(name.rectTransform, 16, 6, 0, 0);
         }
 
         public void Flash(Color c)

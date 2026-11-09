@@ -86,6 +86,10 @@ namespace Showcase.EditorTools.Experiences
 
             // ---- Notebook on the back wall, above the right-hand counters ----
             var board = ctx.Primitive(PrimitiveType.Cube, "Notebook Board", root, new Vector3(0.75f, 0.68f, BackFace - 0.015f), new Vector3(0.98f, 0.54f, 0.03f), BoardWood, false);
+            // Tapping the notebook opens the case file; a thick box so it's easy to hit.
+            var boardBox = board.AddComponent<BoxCollider>();
+            boardBox.size = new Vector3(1f, 1f, 3f);
+            board.AddComponent<DetectiveNotebook>();
 
             // ---- Front line-up ----
             ctx.Primitive(PrimitiveType.Cube, "Line-up Mat", root, new Vector3(0f, 0.004f, -0.62f), new Vector3(2.3f, 0.008f, 0.4f), LineUp, false);
@@ -109,6 +113,7 @@ namespace Showcase.EditorTools.Experiences
             ShowcaseBuildContext.Set(exp, "m_props", props.Where(p => p != null).ToArray());
             ShowcaseBuildContext.Set(exp, "m_board", board.transform);
             ShowcaseBuildContext.Set(exp, "m_markerTemplate", marker);
+            if (tub != null) ShowcaseBuildContext.Set(exp, "m_caseModel", tub);
             ShowcaseBuildContext.Log("detective: " + clues.Count(c => c != null) + " clues, " + props.Count(p => p != null) + " props, " + suspects.Length + " suspects");
         }
 

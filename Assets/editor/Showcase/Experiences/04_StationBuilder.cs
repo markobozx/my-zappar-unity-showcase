@@ -25,7 +25,7 @@ namespace Showcase.EditorTools.Experiences
         {
             var exp = root.gameObject.AddComponent<StationExperience>();
             exp.Title = "Space Station Escape";
-            exp.Hint = "Escape the station! Tap things to investigate.";
+            exp.Hint = "Escape the station! Start with the crackling radio.";
             // Portrait phones are narrow: back off far enough that the whole 3-unit room fits in width.
             exp.FocusPoint = new Vector3(0f, 0.25f, 0.1f);
             exp.FocusDistance = 6.0f;
@@ -125,6 +125,11 @@ namespace Showcase.EditorTools.Experiences
             exp.KeypadWidth = Mathf.Min(0.36f, (db.min.x - lb.max.x) - 0.06f);
             float kh = exp.KeypadWidth * 1.5f;
             ctx.Primitive(PrimitiveType.Cube, "Keypad Plate", keypad, new Vector3(0f, 0f, 0.018f), new Vector3(exp.KeypadWidth + 0.03f, kh + 0.03f, 0.025f), Slate, false);
+            // Tapping the keypad opens the keypad page of the console tray (the world keypad is a display).
+            var keypadBox = keypad.gameObject.AddComponent<BoxCollider>();
+            keypadBox.center = new Vector3(0f, 0f, 0.01f);
+            keypadBox.size = new Vector3(exp.KeypadWidth + 0.08f, kh + 0.08f, 0.08f);
+            Prop(keypad.gameObject, StationPropKind.Keypad);
 
             Decor(ctx, "CR_FirstAidKit_Large", root, new Vector3(-1.3f, 0f, 0.2f), 0.17f, 80f);
             Decor(ctx, "CR_StorageCrate_Small_1", root, new Vector3(-0.98f, 0f, -0.8f), 0.2f, 10f);
@@ -187,6 +192,7 @@ namespace Showcase.EditorTools.Experiences
             var driver = ctx.Place("CR_Tool_Screwdriver", root, new Vector3(1.08f, crateTop, -0.72f), 0.16f, -30f, true);
             Fit(driver, 1.6f);
             Prop(driver, StationPropKind.Decoy).Message = "A screwdriver won't budge those bolts.";
+            exp.DecoyTools = new[] { wrench.GetComponent<StationProp>(), driver.GetComponent<StationProp>() };
             Decor(ctx, "CR_StorageCrate_Small_2", root, new Vector3(1.24f, 0f, 0.22f), 0.2f, -12f);
             spanner.SetActive(false);   // revealed when the locker opens
         }

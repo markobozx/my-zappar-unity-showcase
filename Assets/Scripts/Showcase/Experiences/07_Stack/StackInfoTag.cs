@@ -17,7 +17,7 @@ namespace Showcase.Experiences.Stack
 
         public void OnTap(RaycastHit hit)
         {
-            WorldCard.Show(transform, m_cardOffset, m_title, m_body, ("Got it", WorldCard.CloseOpen));
+            WorldCard.Show(transform, m_cardOffset, m_title, m_body, 1.0f);
             Fx.Play(FxKind.Sparkle, transform.position, 0.6f);
             var owner = GetComponentInParent<StackDeliveryExperience>();
             if (owner == null || !owner.isActiveAndEnabled)

@@ -38,6 +38,10 @@ namespace Showcase.Experiences.Diner
             new Recipe { Name = "Nova Supreme", Pizza = true, Price = "€ 11.40", Steps = new[] { Ingredient.Dough, Ingredient.Sauce, Ingredient.Cheese, Ingredient.Pepperoni, Ingredient.Mushroom, Ingredient.Onion } },
         };
 
+        // The ingredient tray shows one row per dish type; rarely used ones go last (they may need a scroll).
+        public static readonly Ingredient[] BurgerTray = { Ingredient.Bun, Ingredient.Patty, Ingredient.Cheese, Ingredient.Lettuce, Ingredient.Tomato, Ingredient.Onion };
+        public static readonly Ingredient[] PizzaTray = { Ingredient.Dough, Ingredient.Sauce, Ingredient.Cheese, Ingredient.Pepperoni, Ingredient.Mushroom, Ingredient.Onion };
+
         public static (string label, string title, string body, int kcal) Info(Ingredient i)
         {
             switch (i)

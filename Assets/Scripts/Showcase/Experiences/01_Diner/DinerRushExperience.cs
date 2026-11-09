@@ -2,12 +2,16 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Showcase.Experiences.Diner
 {
-    // Pop-Up Diner Rush: tap ingredient crates in the order the ticket lists them to build burgers
-    // and pizzas on the plate. A wrong ingredient bins the plate; a finished dish slides to the
-    // pick-up counter for coins. 60-second rounds.
+    // Pop-Up Diner Rush: add ingredients in the order the ticket lists them to build burgers and
+    // pizzas on the plate. A wrong ingredient bins the plate; a finished dish slides to the pick-up
+    // counter for coins. 60-second rounds.
+    // UI split: the bottom tray holds big ingredient tiles (thumbnails of the crate models, menu facts)
+    // and its title says what goes on next; the crates stay tappable too. In the world: the tickets,
+    // a pulsing "next" tag over the right crate and a dish/progress tag over the plate.
     public class DinerRushExperience : ShowcaseExperience
     {
         [SerializeField] private float m_roundSeconds = 60f;
@@ -42,6 +46,13 @@ namespace Showcase.Experiences.Diner
         private int m_lastTimerSecond = -1;
         private int m_round;
 
+        private WorldTag m_nextTag, m_plateTag;
+        private Ingredient[] m_traySet;
+        private List<TrayOption> m_trayOptions;
+        private bool m_trayOurs;
+        private ScrollRect m_trayScroll;
+        private static ShowcaseTray Tray => ShowcaseTray.Instance;
+
         public Recipe Current => m_queue.Count > 0 ? m_queue[0] : null;
         public bool Running => m_running;
 
@@ -51,18 +62,30 @@ namespace Showcase.Experiences.Diner
             m_plateScale = m_plate != null ? m_plate.localScale : Vector3.one;
             m_tickets = new DinerTicket[m_ticketAnchors.Length];
             for (int i = 0; i < m_ticketAnchors.Length; i++)
-                m_tickets[i] = DinerTicket.Create(m_ticketAnchors[i], Vector3.zero, i == 0 ? 0.5f : 0.34f);
+                m_tickets[i] = DinerTicket.Create(m_ticketAnchors[i], Vector3.zero, i == 0 ? 0.6f : 0.36f);
         }
 
         protected override void OnEnter()
         {
+            if (Tray != null)
+            {
+                Tray.Closed -= OnTrayClosed;
+                Tray.Closed += OnTrayClosed;
+            }
             StartRound();
         }
 
         protected override void OnExit()
         {
             m_running = false;
+            CloseTray();
             ClearSpawned();
+            ShowTags(false);
+        }
+
+        void OnDestroy()
+        {
+            if (Tray != null) Tray.Closed -= OnTrayClosed;
         }
 
         public override void DebugComplete()
@@ -97,11 +120,12 @@ namespace Showcase.Experiences.Diner
             m_queue.Add(DinerMenu.Recipes.First(r => r.Name == "Classic Burger"));
             m_queue.Add(DinerMenu.Recipes.First(r => r.Name == "Margherita"));
             m_running = true;
+            m_traySet = null;
 
+            OpenTray();
             RefreshTickets();
             RefreshScore();
             UpdateTimer();
-            if (Hud != null) Hud.Toast("Rush hour! Build the ticket's order", 1.4f);
         }
 
         void Update()
@@ -130,6 +154,8 @@ namespace Showcase.Experiences.Diner
         private void EndRound()
         {
             m_running = false;
+            ShowTags(false);
+            m_trayOurs = false;   // ShowResult closes the tray
             m_timeLeft = 0f;
             UpdateTimer();
             m_best = Mathf.Max(m_best, m_score);
@@ -156,13 +182,150 @@ namespace Showcase.Experiences.Diner
         {
             for (int i = 0; i < m_tickets.Length; i++)
                 m_tickets[i].Show(m_orderNumber + i, i < m_queue.Count ? m_queue[i] : null, i == 0 ? m_progress : 0, i == 0);
+            RefreshTray();
+            RefreshTags();
+        }
+
+        public Ingredient? NextIngredient => Current != null && m_progress < Current.Steps.Length ? Current.Steps[m_progress] : (Ingredient?)null;
+
+        // ---------------------------------------------------------------- tray (screen: acting)
+
+        public void OpenTray()
+        {
+            if (Tray == null || !m_running || Current == null)
+                return;
+            m_traySet = Current.Pizza ? DinerMenu.PizzaTray : DinerMenu.BurgerTray;
+            m_trayOptions = new List<TrayOption>();
+            foreach (var ing in m_traySet)
+            {
+                var info = DinerMenu.Info(ing);
+                DinerBin bin = BinFor(ing);
+                m_trayOptions.Add(new TrayOption(info.label, info.kcal + " kcal", info.title + " · " + info.body.Split('\n')[0],
+                    bin != null && bin.Display != null ? bin.Display.gameObject : null));
+            }
+            m_trayOurs = true;
+            Tray.Open(TrayTitle(), m_trayOptions, Mathf.Max(0, NextTile()), OnTrayPick);
+            if (m_trayScroll == null) m_trayScroll = Tray.GetComponentInChildren<ScrollRect>(true);
+            ScrollToNext();
+        }
+
+        private void CloseTray()
+        {
+            if (m_trayOurs && Tray != null && Tray.IsOpen)
+            {
+                m_trayOurs = false;
+                Tray.Close();
+            }
+            m_trayOurs = false;
+        }
+
+        private void OnTrayClosed() => m_trayOurs = false;
+
+        public bool TrayOpen => m_trayOurs && Tray != null && Tray.IsOpen;
+
+        private string TrayTitle()
+        {
+            Ingredient? next = NextIngredient;
+            if (Current == null || next == null) return DinerMenu.Brand;
+            return "Next ›  " + DinerMenu.Info(next.Value).label + "   (" + (m_progress + 1) + "/" + Current.Steps.Length + ")";
+        }
+
+        private void OnTrayPick(int index)
+        {
+            if (m_traySet == null || index < 0 || index >= m_traySet.Length)
+                return;
+            DinerBin bin = BinFor(m_traySet[index]);
+            if (bin != null) TapIngredient(bin);
+            RefreshTray();   // e.g. a tap ignored while a dish was being served: put the highlight back
+        }
+
+        private void RefreshTray()
+        {
+            if (!TrayOpen || Current == null)
+                return;
+            // Burger and pizza use different rows of ingredients: swap the tiles when the dish type changes.
+            if (m_traySet != (Current.Pizza ? DinerMenu.PizzaTray : DinerMenu.BurgerTray))
+            {
+                OpenTray();
+                return;
+            }
+            Tray.SetTitle(TrayTitle());
+            // The highlighted tile and big preview always show what goes on next.
+            int next = NextTile();
+            if (next >= 0 && Tray.Selected != next) Tray.Select(next, false);
+            ScrollToNext();
+        }
+
+        private int NextTile()
+        {
+            Ingredient? next = NextIngredient;
+            return next != null && m_traySet != null ? System.Array.IndexOf(m_traySet, next.Value) : -1;
+        }
+
+        // Rarely used ingredients sit at the end of the row; scroll them into reach when they're next.
+        // (The tray has no public scroll call yet, so drive its ScrollRect directly.)
+        private void ScrollToNext()
+        {
+            int i = NextTile();
+            if (m_trayScroll == null || i < 0)
+                return;
+            m_trayScroll.StopMovement();
+            m_trayScroll.horizontalNormalizedPosition = i >= 4 ? 1f : 0f;
+        }
+
+        // ---------------------------------------------------------------- world tags (world: what's happening)
+
+        private void RefreshTags()
+        {
+            if (!m_running || Current == null || m_stack == null)
+            {
+                ShowTags(false);
+                return;
+            }
+            if (m_plateTag == null)
+                m_plateTag = WorldTag.Create(transform, transform.InverseTransformPoint(m_stack.position) + new Vector3(0f, 0.36f, 0.05f), "", 0.12f);
+            m_plateTag.Set(Current.Name + "  " + m_progress + "/" + Current.Steps.Length);
+            m_plateTag.Show(true);
+
+            Ingredient? next = NextIngredient;
+            DinerBin bin = next != null ? BinFor(next.Value) : null;
+            if (bin == null)
+            {
+                if (m_nextTag != null) m_nextTag.Show(false);
+                return;
+            }
+            if (m_nextTag == null)
+                m_nextTag = WorldTag.Create(transform, Vector3.zero, "", 0.12f, Ui.Accent);
+            m_nextTag.transform.localPosition = transform.InverseTransformPoint(bin.SpawnPoint) + new Vector3(0f, 0.12f, 0f);
+            m_nextTag.Set("› " + DinerMenu.Info(next.Value).label, Ui.Accent);
+            m_nextTag.Show(true);
+            m_nextTag.Pulse(true);
+        }
+
+        private void ShowTags(bool show)
+        {
+            if (m_plateTag != null) m_plateTag.Show(show);
+            if (m_nextTag != null) m_nextTag.Show(show);
         }
 
         // ---------------------------------------------------------------- taps
 
         public DinerBin BinFor(Ingredient i) => m_bins.FirstOrDefault(b => b.Ingredient == i);
 
-        // Called by DinerBin.OnTap (and by SelfTest).
+        // Crate tapped in the world: same as its tray tile, and brings the tray back if it was closed.
+        public void TapCrate(DinerBin bin)
+        {
+            if (m_running && !TrayOpen)
+                OpenTray();
+            if (TrayOpen && m_traySet != null)
+            {
+                int i = System.Array.IndexOf(m_traySet, bin.Ingredient);
+                if (i >= 0) { Tray.Select(i); return; }   // highlights the tile and adds via OnTrayPick
+            }
+            TapIngredient(bin);
+        }
+
+        // Called for tray tiles and crate taps (and by SelfTest).
         public void TapIngredient(DinerBin bin)
         {
             StartCoroutine(Bounce(bin.transform, bin.BaseScale, 0.16f, 0.25f));
@@ -206,7 +369,7 @@ namespace Showcase.Experiences.Diner
             m_progress = 0;
             RefreshTickets();
             if (Hud != null)
-                Hud.Toast("Oops! Next was " + DinerMenu.Info(expected).label + "\nPlate reset", 1.8f);
+                Hud.Toast("Oops! That needed " + DinerMenu.Info(expected).label + "\nPlate reset - start again", 1.8f);
         }
 
         private void CompleteOrder(Recipe recipe)
@@ -320,7 +483,6 @@ namespace Showcase.Experiences.Diner
             Fx.Play(FxKind.Confetti, top, 0.9f);
             Fx.Play(FxKind.Pickup, top, 0.7f);
             ShowFloatingText("+" + points, top + m_stack.up * 0.05f);
-            if (Hud != null) Hud.Toast("Order #" + number + " served! +" + points + " coins", 1.1f);
 
             // The finished dish gets its own plate and slides to the pick-up counter.
             var dishGo = new GameObject("Served " + recipe.Name);
@@ -422,43 +584,64 @@ namespace Showcase.Experiences.Diner
         public override IEnumerator SelfTest()
         {
             StartRound();
-            yield return new WaitForSeconds(0.5f);
+            yield return new WaitForSeconds(0.7f);
             if (!m_running) Debug.LogError("[SELFTEST] round did not start");
             if (m_bins.Length != System.Enum.GetValues(typeof(Ingredient)).Length)
                 Debug.LogError("[SELFTEST] expected one bin per ingredient, found " + m_bins.Length);
+            if (!TrayOpen) { Debug.LogError("[SELFTEST] ingredient tray not open at round start"); yield break; }
+            if (Tray.Options.Count != m_traySet.Length) Debug.LogError("[SELFTEST] tray shows " + Tray.Options.Count + " tiles");
+            if (m_nextTag == null || !m_nextTag.gameObject.activeSelf) Debug.LogError("[SELFTEST] no 'next' tag over the crate");
+            Snapshot("tray");
 
-            // Two orders built correctly, tapping the crates in ticket order.
-            for (int order = 0; order < 2; order++)
+            // Order 1 (burger) through the tray tiles, like a player tapping them.
             {
                 Recipe recipe = Current;
-                int scoreBefore = m_score, servedBefore = m_served;
+                int scoreBefore = m_score;
                 foreach (Ingredient step in recipe.Steps)
                 {
-                    DinerBin bin = BinFor(step);
-                    if (bin == null) { Debug.LogError("[SELFTEST] no bin for " + step); yield break; }
-                    bin.OnTap(new RaycastHit());
-                    yield return new WaitForSeconds(0.2f);
+                    int tile = System.Array.IndexOf(m_traySet, step);
+                    if (tile < 0) { Debug.LogError("[SELFTEST] no tray tile for " + step); yield break; }
+                    Tray.Select(tile);
+                    yield return new WaitForSeconds(0.25f);
                 }
                 if (m_score <= scoreBefore) Debug.LogError("[SELFTEST] score did not go up after " + recipe.Name);
-                if (m_served != servedBefore + 1) Debug.LogError("[SELFTEST] served count " + m_served + " after " + recipe.Name);
-                if (Current == recipe && m_progress != 0) Debug.LogError("[SELFTEST] order did not advance");
+                if (m_served != 1) Debug.LogError("[SELFTEST] served count " + m_served + " after " + recipe.Name);
+                yield return new WaitForSeconds(0.8f);
+            }
+            // Order 2 is a pizza: the tray must have swapped to the pizza row.
+            if (!Current.Pizza) Debug.LogError("[SELFTEST] second order should be the Margherita");
+            if (!TrayOpen || m_traySet != DinerMenu.PizzaTray) Debug.LogError("[SELFTEST] tray did not switch to pizza ingredients");
+
+            // Closing the tray, then tapping a crate in the world brings it back.
+            Tray.Close();
+            yield return new WaitForSeconds(0.4f);
+            {
+                Recipe recipe = Current;
+                foreach (Ingredient step in recipe.Steps)
+                {
+                    BinFor(step).OnTap(new RaycastHit());
+                    if (!TrayOpen) Debug.LogError("[SELFTEST] crate tap did not reopen the tray");
+                    if (step == recipe.Steps[1]) { yield return new WaitForSeconds(0.5f); Snapshot("building"); }
+                    yield return new WaitForSeconds(0.25f);
+                }
+                if (m_served != 2) Debug.LogError("[SELFTEST] served count " + m_served + " after " + recipe.Name);
                 yield return new WaitForSeconds(0.8f);
             }
             if (m_dishes.Count != 2) Debug.LogError("[SELFTEST] expected 2 dishes on the pick-up counter, found " + m_dishes.Count);
-            if (m_dishes.Count > 0) m_dishes[0].ShowInfo();
+            if (m_dishes.Count > 0) m_dishes[0].OnTap(new RaycastHit());
             yield return new WaitForSeconds(0.6f);
-            BinFor(Ingredient.Cheese).ShowInfo();
-            yield return new WaitForSeconds(0.4f);
             WorldCard.CloseOpen();
 
             // One right ingredient, then a wrong one: the plate must reset.
             Recipe next = Current;
-            BinFor(next.Steps[0]).OnTap(new RaycastHit());
+            int first = System.Array.IndexOf(m_traySet, next.Steps[0]);
+            Tray.Select(first);
             yield return new WaitForSeconds(0.3f);
             if (m_progress != 1 || m_stackPieces.Count != 1) Debug.LogError("[SELFTEST] first ingredient not on the plate");
-            Ingredient wrong = System.Enum.GetValues(typeof(Ingredient)).Cast<Ingredient>().First(i => i != next.Steps[1]);
+            if (Tray.Selected != System.Array.IndexOf(m_traySet, next.Steps[1])) Debug.LogError("[SELFTEST] tray highlight not on the next ingredient");
+            int wrongTile = System.Array.FindIndex(m_traySet, i => i != next.Steps[1]);
             int scoreBeforeWrong = m_score;
-            BinFor(wrong).OnTap(new RaycastHit());
+            Tray.Select(wrongTile);
             if (m_progress != 0 || m_stackPieces.Count != 0) Debug.LogError("[SELFTEST] plate not reset after a wrong ingredient");
             if (m_score != scoreBeforeWrong) Debug.LogError("[SELFTEST] score changed on a wrong ingredient");
             yield return new WaitForSeconds(0.8f);
@@ -468,6 +651,7 @@ namespace Showcase.Experiences.Diner
             yield return new WaitForSeconds(1.0f);
             if (m_running) Debug.LogError("[SELFTEST] round still running after the timer ran out");
             if (Hud != null && !Hud.ResultVisible) Debug.LogError("[SELFTEST] result panel not shown");
+            if (Tray.IsOpen) Debug.LogError("[SELFTEST] tray still open on the result screen");
             Debug.Log("[SELFTEST] diner ok: served " + m_served + ", coins " + m_score);
         }
     }

@@ -6,7 +6,8 @@ using UnityEngine.UI;
 namespace Showcase.Experiences.Stack
 {
     // Stack the Delivery: the next item hovers above the pallet sliding left and right; tap anywhere
-    // to drop it. Build the tallest tower before the truck leaves (60 s from the first drop, or after
+    // (or the big DROP button in the bottom bar, which also shows the next two items) to drop it.
+    // On entry the tray lists the delivery's item kinds; picking one swaps the hovering item. Build the tallest tower before the truck leaves (60 s from the first drop, or after
     // 3 items hit the floor). With 5+ items stacked the tower is loaded onto the truck and driven off.
     // Physics is kept phone-friendly: at most MaxItems live items, items settle on a velocity
     // threshold, and settled items more than FreezeBelowTop levels under the top become kinematic.
@@ -19,7 +20,9 @@ namespace Showcase.Experiences.Stack
         public const int FreezeBelowTop = 3;
         public const float CmPerUnit = 250f;      // the printed target is ~3 units ≈ 7.5 m of loading dock
         const string BestKey = "showcase.stack.best";
-        const string StartHint = "Tap anywhere to drop the item.\nStack it high before the truck leaves!";
+        const string StartHint = "Tap anywhere or DROP to drop the item.\nStack it high before the truck leaves!";
+        const int Lookahead = 2;
+        static readonly Color NovaBlue = new Color(0.25f, 0.47f, 0.98f);
 
         [SerializeField] private StackItem[] m_templates;          // indexed by StackKind
         [SerializeField] private Transform m_cargo;                // pallet + label; loaded onto the truck
@@ -44,7 +47,7 @@ namespace Showcase.Experiences.Stack
         private readonly List<StackItem> m_free = new List<StackItem>();
         private readonly HashSet<Collider> m_ground = new HashSet<Collider>();
         private readonly List<StackItem> m_sortBuffer = new List<StackItem>();
-        private readonly Queue<StackKind> m_forcedKinds = new Queue<StackKind>();
+        private readonly List<StackKind> m_upcoming = new List<StackKind>();   // after the hovering item
         private Transform m_itemRoot;
         private PhysicsMaterial m_grip;
 
@@ -74,6 +77,15 @@ namespace Showcase.Experiences.Stack
         private Vector3 m_cargoScale, m_truckScale = Vector3.one;
         private Coroutine m_endRoutine, m_truckRoutine, m_markerPunch;
 
+        // Screen UI: bottom bar with the next items and DROP; tray on entry. World: tags.
+        private RectTransform m_bar;
+        private Button m_dropButton;
+        private RawImage[] m_nextThumbs;
+        private Text m_nextName, m_nextThen;
+        private List<TrayOption> m_options;
+        private WorldTag m_truckTag, m_heightTag;
+        private static ShowcaseTray Tray => ShowcaseTray.Instance;
+
         public bool Running => m_running;
         public bool Ended => m_ended;
         public bool Shipping => m_shipping;
@@ -81,6 +93,9 @@ namespace Showcase.Experiences.Stack
         public int LiveCount => m_live.Count;
         public int PooledCount => m_all.Count;
         public bool CanDrop => !m_ended && m_hover != null;
+        public bool BarVisible => m_bar != null && m_bar.gameObject.activeSelf;
+        public StackKind? HoverKind => m_hover != null ? m_hover.Kind : (StackKind?)null;
+        public StackKind NextKind(int i) { FillUpcoming(); return m_upcoming[i]; }
         public float HeightCm => TowerHeight() * CmPerUnit;
         public int StackedCount
         {
@@ -125,15 +140,106 @@ namespace Showcase.Experiences.Stack
         void OnEnable() => ShowcaseInput.Tapped += OnTapped;
         void OnDisable() => ShowcaseInput.Tapped -= OnTapped;
 
-        protected override void OnEnter() => Restart();
+        protected override void OnEnter()
+        {
+            EnsureUi();
+            Restart();
+            OpenTray();
+        }
 
         protected override void OnExit()
         {
             m_running = false;
             m_ended = true;
             m_shipping = false;
+            if (Tray != null)
+            {
+                Tray.Closed -= OnTrayClosed;
+                if (m_options != null && Tray.IsOpen) Tray.Close();
+            }
+            m_options = null;
             Cleanup();
             ResetStage(false);
+            UpdateBar();
+        }
+
+        // ---- Tray: the delivery manifest. Picking a kind swaps the hovering item to it. ----
+
+        private static string KindName(StackKind k)
+        {
+            switch (k)
+            {
+                case StackKind.Crate: return "Wooden crate";
+                case StackKind.Box: return "Parcel";
+                case StackKind.Barrel: return "Oil barrel";
+                case StackKind.Basket: return "Berry basket";
+                case StackKind.AppleCrate: return "Apple crate";
+                default: return "Nova box";
+            }
+        }
+
+        private static string KindDetail(StackKind k)
+        {
+            switch (k)
+            {
+                case StackKind.Crate: return "Flat and sturdy: a great base.";
+                case StackKind.Box: return "Light parcel. Easy to land.";
+                case StackKind.Barrel: return "Heavy and round: it rolls, so drop it dead centre.";
+                case StackKind.Basket: return "Light, wobbly top. Best near the top.";
+                case StackKind.AppleCrate: return "Big and heavy: put it low.";
+                default: return "Our own box. Survives anything!";
+            }
+        }
+
+        public void OpenTray()
+        {
+            if (Tray == null || m_templates == null)
+                return;
+            m_options = new List<TrayOption>();
+            for (int i = 0; i < m_templates.Length; i++)
+            {
+                StackItem t = m_templates[i];
+                var k = (StackKind)i;
+                m_options.Add(new TrayOption(KindName(k), t != null ? (t.Mass * 10f).ToString("0") + " kg" : "", KindDetail(k), t != null ? t.gameObject : null));
+            }
+            int sel = m_hover != null ? (int)m_hover.Kind : 0;
+            int best = BestCm;
+            Tray.Open("Today's delivery" + (best > 0 ? "  ·  Best " + best + " cm" : "  ·  60 s"), m_options, sel, i => SwapHover((StackKind)i),
+                ("Start stacking  ▼", CloseTray));
+            Tray.Closed -= OnTrayClosed;
+            Tray.Closed += OnTrayClosed;
+            UpdateBar();
+        }
+
+        public void CloseTray()
+        {
+            if (Tray != null && m_options != null && Tray.IsOpen)
+                Tray.Close();
+            else
+                OnTrayClosed();
+        }
+
+        private void OnTrayClosed()
+        {
+            if (Tray != null) Tray.Closed -= OnTrayClosed;
+            m_options = null;
+            UpdateBar();
+        }
+
+        private bool TrayOpen => m_options != null && Tray != null && Tray.IsOpen;
+
+        // Replaces the hovering item with `kind` (tray pick), keeping the queue behind it.
+        public void SwapHover(StackKind kind)
+        {
+            if (m_ended || m_running)
+                return;
+            if (m_hover != null)
+            {
+                Fx.Play(FxKind.Poof, m_hover.transform.position, 0.45f);
+                Recycle(m_hover);
+            }
+            m_upcoming.Insert(0, kind);
+            SpawnHover();
         }
 
         // Fresh round: empty pallet, truck parked, waiting for the first drop (which starts the clock).
@@ -152,9 +258,11 @@ namespace Showcase.Experiences.Stack
             m_dropped = 0;
             m_slideT = m_slideHalf;     // start in the middle
             m_forcedX = float.NaN;
-            m_forcedKinds.Clear();
+            m_upcoming.Clear();
             m_peakHeight = 0f;
             m_shownHeight = 0f;
+            m_finalHeight = 0f;
+            m_finalItems = 0;
             m_lastMilestone = 0;
             m_lastShownSecond = -1;
             m_palletTop = PalletTop();
@@ -167,6 +275,7 @@ namespace Showcase.Experiences.Stack
             }
             UpdateHud(true);
             UpdateHeightUi(true);
+            UpdateBar();
         }
 
         private void ResetStage(bool driveTruckIn)
@@ -199,13 +308,14 @@ namespace Showcase.Experiences.Stack
                     m_truck.localPosition = m_truckPos;
             }
             m_truckAway = false;
+            if (m_truckTag != null) m_truckTag.Show(true);
             if (m_dropGuide != null) m_dropGuide.gameObject.SetActive(false);
             if (m_dropTarget != null) m_dropTarget.gameObject.SetActive(false);
         }
 
         private void OnTapped(Ray ray, bool hitAny, RaycastHit hit)
         {
-            if (!isActiveAndEnabled || m_ended)
+            if (!isActiveAndEnabled || m_ended || TrayOpen)
                 return;
             if (hitAny && hit.collider != null && hit.collider.GetComponentInParent<ITappable>() != null)
                 return;   // the info tag handles its own taps
@@ -248,6 +358,7 @@ namespace Showcase.Experiences.Stack
             Animate(item, Squash(item, 0.12f, 0.2f));
             if (m_dropGuide != null) m_dropGuide.gameObject.SetActive(false);
             if (m_dropTarget != null) m_dropTarget.gameObject.SetActive(false);
+            UpdateBar();
             return true;
         }
 
@@ -413,10 +524,31 @@ namespace Showcase.Experiences.Stack
             Recycle(it);
         }
 
+        // Self test: the next items to come, in order.
+        public void SetUpcoming(params StackKind[] kinds)
+        {
+            m_upcoming.Clear();
+            m_upcoming.AddRange(kinds);
+            UpdateBar();
+        }
+
+        private void FillUpcoming()
+        {
+            while (m_upcoming.Count < Lookahead + 1)
+                m_upcoming.Add(RandomKind());
+        }
+
         private StackKind PickKind()
         {
-            if (m_forcedKinds.Count > 0)
-                return m_forcedKinds.Dequeue();
+            FillUpcoming();
+            StackKind k = m_upcoming[0];
+            m_upcoming.RemoveAt(0);
+            FillUpcoming();
+            return k;
+        }
+
+        private StackKind RandomKind()
+        {
             StackKind k;
             int guard = 0;
             do
@@ -456,6 +588,7 @@ namespace Showcase.Experiences.Stack
             m_hover = item;
             item.Visual.localScale = item.VisualScale * 0.01f;
             Animate(item, Tween.ScaleTo(item.Visual, item.VisualScale, 0.25f));
+            UpdateBar();
         }
 
         private float SlideX()
@@ -635,17 +768,16 @@ namespace Showcase.Experiences.Stack
                 p.y = m_palletTop + m_shownHeight;
                 m_heightMarker.localPosition = p;
             }
-            if (m_heightLabel != null)
-            {
-                string s = Mathf.RoundToInt(m_shownHeight * CmPerUnit) + " cm";
-                if (m_heightLabel.text != s) m_heightLabel.text = s;
-            }
+            string label = Mathf.RoundToInt(m_shownHeight * CmPerUnit) + " cm";
+            if (m_heightLabel != null && m_heightLabel.text != label) m_heightLabel.text = label;
+            if (m_heightTag != null && m_heightTag.Text.text != label) m_heightTag.Set(label);
         }
 
         private void UpdateHud(bool force)
         {
             int sec = Mathf.CeilToInt(Mathf.Max(0f, m_timeLeft));
-            int cm = Mathf.RoundToInt(TowerHeight() * CmPerUnit);
+            // Once shipped, the tower rides the truck: keep showing the measured final height.
+            int cm = Mathf.RoundToInt((m_ended && m_finalHeight > 0f ? m_finalHeight : TowerHeight()) * CmPerUnit);
             int stacked = StackedCount;
             // Compared as ints: building a key string every frame is per-frame garbage on WebGL.
             if (!force && sec == m_lastSec && cm == m_lastCm && m_misses == m_lastMissesShown && stacked == m_lastStacked)
@@ -668,6 +800,95 @@ namespace Showcase.Experiences.Stack
                 string drops = m_misses > 0 ? "<color=#FF7361>" + m_misses + "</color>" : "0";
                 m_boardDrops.text = "Stacked " + stacked + "   ·   Drops " + drops + "/" + MaxMisses;
             }
+            if (m_truckTag != null)
+            {
+                bool ready = stacked >= ShipMinItems;
+                m_truckTag.Set(ready ? "√ Ready to ship · " + stacked : "Ships at " + ShipMinItems + " · " + stacked + "/" + ShipMinItems,
+                    ready ? Ui.Good : new Color(0.13f, 0.12f, 0.2f, 0.88f));
+            }
+        }
+
+        // ---------- screen bar: next items + DROP ----------
+
+        private void EnsureUi()
+        {
+            if (m_bar == null)
+                BuildBar();
+            if (m_truckTag == null && m_truck != null)
+                m_truckTag = WorldTag.Create(m_truck, new Vector3(0.05f, 0.66f, 0f), "Ships at " + ShipMinItems, 0.15f);
+            if (m_heightTag == null && m_heightMarker != null)
+                m_heightTag = WorldTag.Create(m_heightMarker, new Vector3(0.26f, 0.08f, -0.03f), "0 cm", 0.14f, new Color(1f, 0.45f, 0.38f, 0.95f));
+        }
+
+        private void BuildBar()
+        {
+            var go = new GameObject("Next Bar Canvas", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+            go.transform.SetParent(transform, false);
+            var canvas = go.GetComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder = 45;   // under the HUD (50), so toasts and the result draw on top
+            var scaler = go.GetComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1080, 1920);
+            scaler.matchWidthOrHeight = 0.5f;
+
+            var bg = Ui.Round(Ui.Panel(go.transform, Ui.Paper, "Next Bar"), 40f);
+            bg.raycastTarget = true;   // taps on the bar never drop through to the scene
+            bg.gameObject.AddComponent<Shadow>().effectDistance = new Vector2(0f, -4f);
+            m_bar = bg.rectTransform;
+            m_bar.anchorMin = new Vector2(0f, 0f);
+            m_bar.anchorMax = new Vector2(1f, 0f);
+            m_bar.pivot = new Vector2(0.5f, 0f);
+            // Bottom edge up to just under the HUD hint box (which starts 200 px up).
+            m_bar.offsetMin = new Vector2(24f, 22f);
+            m_bar.offsetMax = new Vector2(-24f, 192f);
+
+            m_nextThumbs = new RawImage[Lookahead];
+            float x = 18f;
+            for (int i = 0; i < Lookahead; i++)
+            {
+                float size = i == 0 ? 140f : 104f;
+                var tile = Ui.Round(Ui.Panel(bg.transform, i == 0 ? new Color(0.36f, 0.62f, 1f, 0.25f) : new Color(0.13f, 0.12f, 0.2f, 0.07f), "Next " + i), 26f);
+                Ui.Place(tile.rectTransform, new Vector2(0f, 0.5f), new Vector2(size, size), new Vector2(x, i == 0 ? 0f : -8f));
+                var raw = Ui.Rect("Thumb", tile.transform).gameObject.AddComponent<RawImage>();
+                Ui.Stretch(raw.rectTransform, 6, 6, 6, 6);
+                raw.raycastTarget = false;
+                if (i > 0) raw.color = new Color(1f, 1f, 1f, 0.75f);
+                m_nextThumbs[i] = raw;
+                x += size + 12f;
+            }
+            var head = Ui.Label(bg.transform, "NEXT", 30, Ui.Muted, TextAnchor.LowerLeft, FontStyle.Bold, "Next Label");
+            Ui.Place(head.rectTransform, new Vector2(0f, 1f), new Vector2(300, 44), new Vector2(x + 6f, -14f));
+            m_nextName = Ui.Label(bg.transform, "", 40, Ui.Ink, TextAnchor.MiddleLeft, FontStyle.Bold, "Next Name");
+            Ui.Place(m_nextName.rectTransform, new Vector2(0f, 0.5f), new Vector2(300, 56), new Vector2(x + 6f, 2f));
+            m_nextName.resizeTextForBestFit = true;
+            m_nextName.resizeTextMinSize = 30;
+            m_nextName.resizeTextMaxSize = 40;
+            m_nextThen = Ui.Label(bg.transform, "", 30, Ui.Muted, TextAnchor.UpperLeft, FontStyle.Normal, "Then");
+            Ui.Place(m_nextThen.rectTransform, new Vector2(0f, 0f), new Vector2(300, 44), new Vector2(x + 6f, 14f));
+
+            m_dropButton = Ui.Button(bg.transform, "DROP  ▼", Ui.Accent, () => Drop(), 52, "Drop");
+            Ui.Place((RectTransform)m_dropButton.transform, new Vector2(1f, 0.5f), new Vector2(400, 138), new Vector2(-16f, 0f));
+            m_bar.gameObject.SetActive(false);
+        }
+
+        // Shown while a round can be played and the tray is closed; shows the two items after the hover.
+        private void UpdateBar()
+        {
+            if (m_bar == null)
+                return;
+            bool show = isActiveAndEnabled && !m_ended && !TrayOpen;
+            if (m_bar.gameObject.activeSelf != show) m_bar.gameObject.SetActive(show);
+            if (!show)
+                return;
+            FillUpcoming();
+            for (int i = 0; i < m_nextThumbs.Length; i++)
+            {
+                StackItem t = m_templates[(int)m_upcoming[i]];
+                m_nextThumbs[i].texture = t != null ? ModelPreview.Instance.Thumbnail(t.gameObject) : null;
+            }
+            m_nextName.text = KindName(m_upcoming[0]);
+            m_nextThen.text = "then " + KindName(m_upcoming[1]).ToLowerInvariant();
         }
 
         private static string FormatTime(float seconds)
@@ -697,6 +918,7 @@ namespace Showcase.Experiences.Stack
                 Hud.Toast(reason, 1.4f);
             }
             UpdateHud(true);
+            UpdateBar();
             if (isActiveAndEnabled)
                 m_endRoutine = StartCoroutine(EndSequence());
             else
@@ -741,6 +963,7 @@ namespace Showcase.Experiences.Stack
             {
                 foreach (StackItem it in m_live)
                     it.transform.SetParent(m_cargo, true);
+                if (m_truckTag != null) m_truckTag.Show(false);   // the loaded tower would cover it
                 if (Hud != null) Hud.Toast("Loading " + m_finalItems + " items!", 1.2f);
                 yield return LoadCargo();
             }
@@ -900,29 +1123,6 @@ namespace Showcase.Experiences.Stack
 
         // ---------- self test ----------
 
-        private static void DebugShot(string name)
-        {
-#if UNITY_EDITOR
-            Camera cam = ShowcaseRig.ActiveCamera;
-            if (cam == null) return;
-            string dir = "Builds/Preview/stack";
-            System.IO.Directory.CreateDirectory(dir);
-            var rt = new RenderTexture(720, 1280, 24);
-            RenderTexture prev = cam.targetTexture;
-            cam.targetTexture = rt;
-            cam.Render();
-            RenderTexture.active = rt;
-            var tex = new Texture2D(rt.width, rt.height, TextureFormat.RGB24, false);
-            tex.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0);
-            tex.Apply();
-            System.IO.File.WriteAllBytes(dir + "/" + name + ".png", tex.EncodeToPNG());
-            RenderTexture.active = null;
-            cam.targetTexture = prev;
-            DestroyImmediate(rt);
-            DestroyImmediate(tex);
-#endif
-        }
-
         private IEnumerator WaitForHover(float timeout)
         {
             float t0 = Time.time;
@@ -940,21 +1140,39 @@ namespace Showcase.Experiences.Stack
 
         public override IEnumerator SelfTest()
         {
+            // Entry: the tray shows the delivery manifest; picking a kind swaps the hovering item.
+            if (Tray == null) { Debug.LogError("[SELFTEST] no tray"); yield break; }
             Restart();
+            OpenTray();
+            yield return WaitForHover(4f);
+            if (!Tray.IsOpen) Debug.LogError("[SELFTEST] tray not open on entry");
+            if (Tray.Options.Count != m_templates.Length) Debug.LogError("[SELFTEST] tray shows " + Tray.Options.Count + " kinds, expected " + m_templates.Length);
+            if (BarVisible) Debug.LogError("[SELFTEST] DROP bar visible under the open tray");
+            Tray.Select((int)StackKind.NovaBox);   // like tapping the Nova box tile
+            yield return WaitForHover(2f);
+            if (HoverKind != StackKind.NovaBox) Debug.LogError("[SELFTEST] picking Nova box in the tray hovers " + HoverKind);
+            yield return new WaitForSeconds(0.3f);
+            Snapshot("tray");
+            Tray.Press(0);   // "Start stacking"
             yield return null;
+            if (Tray.IsOpen) Debug.LogError("[SELFTEST] tray still open after Start");
+            if (!BarVisible) Debug.LogError("[SELFTEST] DROP bar not shown after Start");
             if (m_running || m_ended) Debug.LogError("[SELFTEST] round should wait for the first drop");
 
-            // Five drops at the centre (slider stopped), through the same Drop() a tap uses.
+            // Five drops at the centre (slider stopped), through the DROP button like a player.
             m_forcedX = 0f;
-            foreach (StackKind k in new[] { StackKind.Crate, StackKind.Box, StackKind.NovaBox, StackKind.AppleCrate, StackKind.Crate })
-                m_forcedKinds.Enqueue(k);
+            Recycle(m_hover);
+            SetUpcoming(StackKind.Crate, StackKind.Box, StackKind.NovaBox, StackKind.AppleCrate, StackKind.Crate);
             float lastHeight = 0f;
             for (int i = 0; i < 5; i++)
             {
                 yield return WaitForHover(4f);
                 if (!CanDrop) { Debug.LogError("[SELFTEST] no hover item to drop (#" + (i + 1) + ")"); break; }
                 StackItem item = m_hover;
-                if (!Drop()) Debug.LogError("[SELFTEST] Drop() refused (#" + (i + 1) + ")");
+                StackKind expectedNext = NextKind(0);
+                if (m_nextName != null && m_nextName.text != KindName(expectedNext)) Debug.LogError("[SELFTEST] bar shows next '" + m_nextName.text + "', queue says " + expectedNext);
+                m_dropButton.onClick.Invoke();   // the big DROP button
+                if (m_hover == item || item.State != StackState.Falling) Debug.LogError("[SELFTEST] DROP button did not drop (#" + (i + 1) + ")");
                 if (i == 0 && !m_running) Debug.LogError("[SELFTEST] first drop did not start the round");
                 yield return WaitForRest(item, 5f);
                 yield return new WaitForSeconds(0.2f);
@@ -962,7 +1180,12 @@ namespace Showcase.Experiences.Stack
                 float h = TowerHeight();
                 if (h <= lastHeight + 0.03f) Debug.LogError("[SELFTEST] height did not grow on drop #" + (i + 1) + ": " + lastHeight + " -> " + h);
                 lastHeight = h;
-                if (i == 2) DebugShot("play-stack3");
+                if (i == 2) Snapshot("stack3");
+                if (i < 4)
+                {
+                    yield return WaitForHover(4f);
+                    if (HoverKind != expectedNext) Debug.LogError("[SELFTEST] hover is " + HoverKind + " but the bar promised " + expectedNext);
+                }
             }
             int stacked = StackedCount;
             if (stacked < 4) Debug.LogError("[SELFTEST] only " + stacked + " items stacked after 5 centred drops");
@@ -970,7 +1193,7 @@ namespace Showcase.Experiences.Stack
             int frozen = m_live.FindAll(it => it.Frozen).Count;
             if (stacked > FreezeBelowTop + 1 && frozen == 0) Debug.LogError("[SELFTEST] no lower level frozen with " + stacked + " stacked");
             if (m_hover != null && m_hover.transform.localPosition.y < TowerTop(false)) Debug.LogError("[SELFTEST] hover item below the tower top");
-            DebugShot("play-stack5");
+            Snapshot("stack5");
 
             // One deliberate miss beside the pallet: hits the floor, counts a drop and is recycled.
             m_forcedX = 0.9f;
@@ -994,7 +1217,7 @@ namespace Showcase.Experiences.Stack
             bool shot = false;
             while ((m_shipping || m_endRoutine != null) && Time.time - e0 < 10f)
             {
-                if (!shot && m_truckAway) { shot = true; DebugShot("play-ship"); }
+                if (!shot && m_truckAway) { shot = true; Snapshot("ship"); }
                 yield return null;
             }
             if (m_running) Debug.LogError("[SELFTEST] round still running after EndRound");
@@ -1024,7 +1247,7 @@ namespace Showcase.Experiences.Stack
             }
             m_forcedX = float.NaN;
             yield return new WaitForSeconds(0.3f);
-            DebugShot("play-tower");
+            Snapshot("tower");
             EndRound("Time's up! The truck is leaving…");
             e0 = Time.time;
             while ((m_shipping || m_endRoutine != null) && Time.time - e0 < 10f)

@@ -10,7 +10,9 @@ namespace Showcase.Experiences.BarCart
     // Build Your Bar Cart: style a cart, load three Lumo sodas, pick a glass and garnish, shake, pour,
     // and get a recipe card for the generated mocktail. Every prop is placed by BarCartBuilder; items
     // only move between their home spot and the cart, so nothing is instantiated from assets at runtime.
-    // The current step is derived from the choices, so players can change their mind until they shake.
+    // UI split: one bottom-tray page per step (thumbnails of that step's props, "‹ Back" / "Next step ›")
+    // and the cart in the world updates live with every pick. Tapping a prop jumps to its step.
+    // Players can change their mind freely until they start shaking.
     public class BarCartExperience : ShowcaseExperience
     {
         [Header("Cart styles (preloaded, one visible)")]
@@ -42,7 +44,18 @@ namespace Showcase.Experiences.BarCart
         public Vector3 GlassSlot = new Vector3(0.14f, 0f, -0.07f);
         public Vector3 GarnishSlot = new Vector3(0f, 0f, -0.08f);
 
-        private static readonly string[] StepNames = { "Cart", "Sodas", "Glass", "Shake", "Pour" };
+        public const int StageCount = 5;
+        private static readonly string[] StepNames = { "Cart", "Sodas", "Glass", "Garnish", "Shake" };
+        private static readonly string[] StageTitles = { "Cart style", "Pick 3 sodas", "Glass", "Garnish", "Shake & pour" };
+        private static readonly string[] CartBlurbs = { "Warm walnut with turned legs. Timeless.", "Mint-fresh pastel frame. Pool-party ready.", "Glossy cherry lacquer. Loud in the best way." };
+        private static readonly string[] GlassBlurbs = { "Tall and straight: lots of fizz, lots of ice.", "Wide and elegant: for sipping slowly.", "Short and sturdy: the everyday cooler." };
+        private static readonly string[] GarnishBlurbs = { "A bright citrus wheel on the rim.", "A glossy cherry on top. Classic.", "A fresh sprig for a garden-cool nose." };
+        // Free-camera framing per step (stage-local focus, distance): brings that step's props up close.
+        private static readonly Vector4[] StageFrames =
+        {
+            new Vector4(0f, 0.3f, 0.15f, 3.0f), new Vector4(0f, 0.3f, 0.45f, 3.4f), new Vector4(-0.2f, 0.22f, 0.05f, 3.1f),
+            new Vector4(0.2f, 0.22f, 0.05f, 3.1f), new Vector4(0f, 0.32f, 0.1f, 2.8f),
+        };
         private static readonly Color Done = Ui.Good;
         private static readonly Color Upcoming = new Color(0.8f, 0.79f, 0.84f);
         private static readonly Color CardBg = new Color(1f, 0.98f, 0.95f, 0.97f);
@@ -61,7 +74,8 @@ namespace Showcase.Experiences.BarCart
 
         // State
         private int m_cart;
-        private bool m_cartConfirmed;
+        private int m_stage;                 // 0 cart, 1 sodas, 2 glass, 3 garnish, 4 shake & pour
+        private int m_lastSoda;
         private readonly List<int> m_picked = new List<int>();
         private int m_glass = -1, m_garnish = -1;
         private float m_shake;
@@ -73,20 +87,30 @@ namespace Showcase.Experiences.BarCart
         private Text[] m_stepNums, m_stepLabels;
         private Image[] m_stepLinks;
         private Text m_instruction;
-        private Button m_next;
         private Transform m_ring;
         private Image m_ringFill;
         private Text m_ringText, m_ringCaption;
         private Transform m_recipe;
         private Text m_recipeName, m_recipeBody, m_recipeGlass;
         private Image m_recipeSwatch;
-        private Text[] m_bottleTags;
-        private Image[] m_bottleTagBgs;
+        private WorldTag[] m_bottleTags;
+        private WorldTag m_cartTag, m_glassTag, m_garnishTag;
+
+        // Screen UI
+        private List<TrayOption> m_options;
+        private bool m_trayOwned;
+        private GameObject m_screenUi;
+        private Button m_stepButton;
+        private static ShowcaseTray Tray => ShowcaseTray.Instance;
+        private static readonly Color TagIdle = new Color(0.13f, 0.12f, 0.2f, 0.88f);
+        private static readonly Color TagDone = new Color(0.24f, 0.6f, 0.36f, 0.92f);
 
         private static Sprite s_circle, s_ring;
 
         // ---- Public state (used by SelfTest and the UI) ----
-        public int Step => m_done ? 6 : !m_cartConfirmed ? 1 : m_picked.Count < 3 ? 2 : (m_glass < 0 || m_garnish < 0) ? 3 : m_shake < 1f ? 4 : 5;
+        public int Step => m_done ? StageCount + 1 : m_stage + 1;
+        public bool StepOpen => Tray != null && Tray.IsOpen && m_trayOwned;
+        private bool ReadyToShake => m_picked.Count == 3 && m_glass >= 0 && m_garnish >= 0;
         public int CartIndex => m_cart;
         public IReadOnlyList<int> Picked => m_picked;
         public int GlassIndex => m_glass;
@@ -111,6 +135,13 @@ namespace Showcase.Experiences.BarCart
             StopAllCoroutines();
             m_anims.Clear();
             m_pouring = false;
+            CloseStep();
+            if (m_screenUi != null) m_screenUi.SetActive(false);
+        }
+
+        void OnDisable()
+        {
+            if (m_screenUi != null) m_screenUi.SetActive(false);
         }
 
         void OnDestroy()
@@ -118,17 +149,26 @@ namespace Showcase.Experiences.BarCart
             if (m_liquidMats != null)
                 foreach (var m in m_liquidMats)
                     if (m != null) Destroy(m);
+            if (m_screenUi != null) Destroy(m_screenUi);
         }
 
         void Update()
         {
             if (m_done && PedestalTop != null)
                 PedestalTop.Rotate(0f, 40f * Time.deltaTime, 0f, Space.Self);
+            // The front step sign is for when the tray is hidden (AR); the open tray already says the step.
+            if (TrackerAnchor != null && TrackerAnchor.gameObject.activeSelf == StepOpen)
+                TrackerAnchor.gameObject.SetActive(!StepOpen);
+            if (m_stepButton != null)
+            {
+                bool show = !m_done && !m_pouring && (Tray == null || !Tray.IsOpen) && (Hud == null || !Hud.ResultVisible);
+                if (m_stepButton.gameObject.activeSelf != show) m_stepButton.gameObject.SetActive(show);
+            }
         }
 
         private static void EnsureEventSystem()
         {
-            // The world-space Next/Pour button needs an EventSystem; full scene builds add one, single builds may not.
+            // Screen buttons need an EventSystem; full scene builds add one, single builds may not.
             if (EventSystem.current != null || FindAnyObjectByType<EventSystem>() != null)
                 return;
             new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
@@ -144,7 +184,8 @@ namespace Showcase.Experiences.BarCart
             if (Hud != null) Hud.HideResult();
 
             m_cart = 0;
-            m_cartConfirmed = false;
+            m_stage = 0;
+            m_lastSoda = 0;
             m_picked.Clear();
             m_glass = m_garnish = -1;
             m_shake = 0f;
@@ -166,10 +207,126 @@ namespace Showcase.Experiences.BarCart
                 SetLiquid(i, 0f, Color.white);
             if (m_recipe != null) m_recipe.gameObject.SetActive(false);
             m_lastStep = 1;
+            GoToStage(0);
+        }
+
+        // ---------- Steps (tray pages) ----------
+
+        // Opens the tray page for a step and frames its props. Glass and garnish always have a pick
+        // (the first one, or `pick`) so the cart in the world never disagrees with the tray.
+        public void GoToStage(int stage, int pick = -1)
+        {
+            if (m_done) return;
+            m_stage = Mathf.Clamp(stage, 0, StageCount - 1);
+            if (m_stage == 2 && m_glass < 0) PickGlass(Mathf.Max(0, pick));
+            if (m_stage == 3 && m_garnish < 0) PickGarnish(Mathf.Max(0, pick));
+            var f = StageFrames[m_stage];
+            FreeCamera.Instance?.Frame(new Vector3(f.x, f.y, f.z), f.w, 44f);
+            OpenStep();
+        }
+
+        public void OpenStep()
+        {
+            if (Tray == null || m_done) { Refresh(); return; }
+            var o = new List<TrayOption>();
+            int selected = 0;
+            System.Action<int> onSelect = null;
+            var back = ("‹ Back", (System.Action)Back);
+            var next = ("Next step ›", (System.Action)Next);
+            switch (m_stage)
+            {
+                case 0:
+                    for (int i = 0; i < Carts.Length; i++)
+                        o.Add(new TrayOption(BarCartData.Carts[i], "Lumo bar cart", CartBlurbs[i % CartBlurbs.Length], Carts[i]));
+                    selected = m_cart;
+                    onSelect = SetCart;
+                    break;
+                case 1:
+                    for (int i = 0; i < Bottles.Length; i++)
+                        o.Add(new TrayOption(BarCartData.Flavors[i].Name, null, BarCartData.Flavors[i].Note + "\n" + BarCartData.Brand + " · 330 ml", Bottles[i].gameObject));
+                    selected = m_lastSoda;
+                    onSelect = ToggleBottle;
+                    break;
+                case 2:
+                    for (int i = 0; i < Glasses.Length; i++)
+                        o.Add(new TrayOption(BarCartData.Glasses[i].name, "Makes it a " + BarCartData.Glasses[i].word, GlassBlurbs[i % GlassBlurbs.Length], Glasses[i].gameObject));
+                    selected = m_glass;
+                    onSelect = PickGlass;
+                    break;
+                case 3:
+                    for (int i = 0; i < Garnishes.Length; i++)
+                        o.Add(new TrayOption(BarCartData.Garnishes[i], null, GarnishBlurbs[i % GarnishBlurbs.Length], Garnishes[i].gameObject));
+                    selected = m_garnish;
+                    onSelect = PickGarnish;
+                    break;
+                default:
+                    o.Add(new TrayOption("Lumo Shaker", null, "Press Shake! (or grab and wiggle the shaker) until it's 100%, then Pour.", Shaker.gameObject));
+                    if (m_glass >= 0)
+                        o.Add(new TrayOption("Your " + BarCartData.Glasses[m_glass].name, DrinkName, string.Join(" + ", m_picked.Select(i => BarCartData.Flavors[i].Name)), Glasses[m_glass].gameObject));
+                    break;
+            }
+            m_options = o;
+            m_trayOwned = true;
+            if (m_stage == 0) Tray.Open(StageTitle(), o, selected, onSelect, next);
+            else if (m_stage < 4) Tray.Open(StageTitle(), o, selected, onSelect, back, next);
+            else Tray.Open(StageTitle(), o, 0, null, back, ("Shake!", (System.Action)ShakeTap), ("Pour ›", (System.Action)Pour));
             Refresh();
         }
 
-        // ---------- Taps ----------
+        public void Next()
+        {
+            if (m_done || m_pouring) return;
+            switch (m_stage)
+            {
+                case 0: GoToStage(1); break;
+                case 1:
+                    if (m_picked.Count < 3) { Toast("Pick 3 sodas first (" + m_picked.Count + "/3)"); return; }
+                    GoToStage(2);
+                    break;
+                case 2: GoToStage(3); break;
+                case 3:
+                    if (m_picked.Count < 3) { Toast("The cart still needs 3 sodas"); GoToStage(1); return; }
+                    GoToStage(4);
+                    break;
+            }
+        }
+
+        public void Back()
+        {
+            if (m_stage == 0 || m_done) return;
+            if (Locked) { Toast("Already shaken - pour it!"); return; }
+            GoToStage(m_stage - 1);
+        }
+
+        private void CloseStep()
+        {
+            if (m_trayOwned && Tray != null && Tray.IsOpen) Tray.Close();
+            m_trayOwned = false;
+        }
+
+        private void OnTrayClosed()
+        {
+            if (!m_trayOwned) return;
+            m_trayOwned = false;
+            FreeCamera.Instance?.Frame(FocusPoint, FocusDistance, FocusPitch);
+        }
+
+        private string StageTitle()
+        {
+            if (m_pouring) return "Step 5/5  ·  Pouring...";
+            string t = "Step " + (m_stage + 1) + "/" + StageCount + "  ·  " + StageTitles[m_stage];
+            if (m_stage == 1) t += "  (" + m_picked.Count + "/3)";
+            return t;
+        }
+
+        // Selecting a tile of the open step, or applying directly if the tray isn't showing it.
+        private void Choose(int stage, int index, System.Action<int> apply)
+        {
+            if (StepOpen && m_stage == stage) Tray.Select(index);
+            else apply(index);
+        }
+
+        // ---------- Taps (world props jump to their step) ----------
 
         public void Tap(BarCartPart part)
         {
@@ -194,31 +351,40 @@ namespace Showcase.Experiences.BarCart
         public void CycleCart()
         {
             if (CheckLocked(Carts[m_cart].transform)) return;
+            if (m_stage != 0 || !StepOpen) GoToStage(0);
+            Choose(0, (m_cart + 1) % Carts.Length, SetCart);
+        }
+
+        public void SetCart(int index)
+        {
+            if (index < 0 || index >= Carts.Length) return;
+            if (index == m_cart) { Wiggle(Carts[m_cart].transform); return; }
+            if (CheckLocked(Carts[m_cart].transform)) return;
             Carts[m_cart].SetActive(false);
-            m_cart = (m_cart + 1) % Carts.Length;
+            m_cart = index;
             var cart = Carts[m_cart];
             cart.SetActive(true);
             Run(cart.transform, Pop(cart.transform, m_home[cart.transform].Scale));
             Run(CartTop, MoveY(CartTop, CartTops[m_cart], 0.3f));
             Fx.Play(FxKind.Poof, cart.transform.position + transform.up * 0.15f * transform.lossyScale.y, 0.9f);
-            Toast("Cart: " + BarCartData.Carts[m_cart] + "  (" + (m_cart + 1) + "/" + Carts.Length + ")");
-            Refresh();
-        }
-
-        public void ConfirmCart()
-        {
-            if (m_cartConfirmed) return;
-            m_cartConfirmed = true;
-            Fx.Play(FxKind.Sparkle, Carts[m_cart].transform.position + transform.up * 0.3f * transform.lossyScale.y, 0.8f);
             Refresh();
         }
 
         public void TapBottle(int i)
         {
             if (i < 0 || i >= Bottles.Length) return;
+            if (CheckLocked(Bottles[i].transform)) return;
+            if (m_stage != 1 || !StepOpen) { m_lastSoda = i; GoToStage(1); }
+            Choose(1, i, ToggleBottle);
+        }
+
+        // Tray tile in the soda step: on the cart / back to the shelf.
+        public void ToggleBottle(int i)
+        {
+            if (i < 0 || i >= Bottles.Length) return;
             var t = Bottles[i].transform;
             if (CheckLocked(t)) return;
-            m_cartConfirmed = true;
+            m_lastSoda = i;
             if (m_picked.Contains(i))
             {
                 m_picked.Remove(i);
@@ -230,7 +396,8 @@ namespace Showcase.Experiences.BarCart
             else if (m_picked.Count >= 3)
             {
                 Wiggle(t);
-                Toast("The cart holds 3 sodas - tap one on the cart to put it back");
+                Toast("The cart holds 3 - tap a √ soda to put it back");
+                Refresh();
                 return;
             }
             else
@@ -238,7 +405,7 @@ namespace Showcase.Experiences.BarCart
                 m_picked.Add(i);
                 LayoutBottles();
                 Fx.Play(FxKind.Pickup, t.position + transform.up * 0.1f * transform.lossyScale.y, 0.7f);
-                Toast("+ " + BarCartData.Flavors[i].Name + "  (" + m_picked.Count + "/3)");
+                if (m_picked.Count == 3) Toast("Cart loaded! Next step ›");
             }
             Refresh();
         }
@@ -259,59 +426,55 @@ namespace Showcase.Experiences.BarCart
         {
             if (i < 0 || i >= Glasses.Length) return;
             var t = Glasses[i].transform;
-            if (Step == 5 && i == m_glass && !m_pouring) { Pour(); return; }
+            if (m_stage == 4 && m_shake >= 1f && i == m_glass && !m_pouring && !m_done) { Pour(); return; }
             if (CheckLocked(t)) return;
-            m_cartConfirmed = true;
-            if (m_glass == i)
+            if (m_stage != 2 || !StepOpen) GoToStage(2, i);
+            Choose(2, i, PickGlass);
+        }
+
+        // The chosen glass rides on the cart (its garnish follows); the old one goes back to the tray.
+        public void PickGlass(int i)
+        {
+            if (i < 0 || i >= Glasses.Length) return;
+            var t = Glasses[i].transform;
+            if (CheckLocked(t)) return;
+            if (m_glass == i) { Refresh(); return; }
+            int old = m_glass;
+            m_glass = i;
+            if (m_garnish >= 0) MoveGarnish();
+            if (old >= 0)
             {
-                // Put it back; its garnish waits on the cart.
-                m_glass = -1;
-                if (m_garnish >= 0) MoveGarnish();
-                Run(t, Arc(t, m_home[t].Parent, m_home[t].Pos, m_home[t].Rot, m_home[t].Scale, 0.18f, 0.45f));
-                Toast(BarCartData.Glasses[i].name + " back on the tray");
+                var o = Glasses[old].transform;
+                Run(o, Arc(o, m_home[o].Parent, m_home[o].Pos, m_home[o].Rot, m_home[o].Scale, 0.18f, 0.45f));
             }
-            else
-            {
-                int old = m_glass;
-                m_glass = i;
-                if (m_garnish >= 0) MoveGarnish();
-                if (old >= 0)
-                {
-                    var o = Glasses[old].transform;
-                    Run(o, Arc(o, m_home[o].Parent, m_home[o].Pos, m_home[o].Rot, m_home[o].Scale, 0.18f, 0.45f));
-                }
-                var h = m_home[t];
-                Run(t, Arc(t, CartTop, GlassSlot + h.PivotOffset, h.Rot, h.Scale, 0.3f, 0.5f));
-                Fx.Play(FxKind.Sparkle, t.position, 0.6f);
-                Toast("Glass: " + BarCartData.Glasses[i].name);
-            }
+            var h = m_home[t];
+            Run(t, Arc(t, CartTop, GlassSlot + h.PivotOffset, h.Rot, h.Scale, 0.3f, 0.5f));
+            Fx.Play(FxKind.Sparkle, t.position, 0.6f);
             Refresh();
         }
 
         public void TapGarnish(int i)
         {
             if (i < 0 || i >= Garnishes.Length) return;
+            if (CheckLocked(Garnishes[i].transform)) return;
+            if (m_stage != 3 || !StepOpen) GoToStage(3, i);
+            Choose(3, i, PickGarnish);
+        }
+
+        public void PickGarnish(int i)
+        {
+            if (i < 0 || i >= Garnishes.Length) return;
             var t = Garnishes[i].transform;
             if (CheckLocked(t)) return;
-            m_cartConfirmed = true;
-            if (m_garnish == i)
+            if (m_garnish == i) { Refresh(); return; }
+            if (m_garnish >= 0)
             {
-                m_garnish = -1;
-                Run(t, Arc(t, m_home[t].Parent, m_home[t].Pos, m_home[t].Rot, m_home[t].Scale, 0.18f, 0.45f));
-                Toast(BarCartData.Garnishes[i] + " back on the tray");
+                var o = Garnishes[m_garnish].transform;
+                Run(o, Arc(o, m_home[o].Parent, m_home[o].Pos, m_home[o].Rot, m_home[o].Scale, 0.18f, 0.45f));
             }
-            else
-            {
-                if (m_garnish >= 0)
-                {
-                    var o = Garnishes[m_garnish].transform;
-                    Run(o, Arc(o, m_home[o].Parent, m_home[o].Pos, m_home[o].Rot, m_home[o].Scale, 0.18f, 0.45f));
-                }
-                m_garnish = i;
-                MoveGarnish();
-                Fx.Play(FxKind.Pickup, t.position, 0.5f);
-                Toast("Garnish: " + BarCartData.Garnishes[i]);
-            }
+            m_garnish = i;
+            MoveGarnish();
+            Fx.Play(FxKind.Pickup, t.position, 0.5f);
             Refresh();
         }
 
@@ -351,25 +514,34 @@ namespace Showcase.Experiences.BarCart
 
         public void ShakeTap()
         {
-            int step = Step;
-            if (step < 4)
+            if (m_done || m_pouring)
             {
                 Wiggle(Shaker.transform);
-                Toast(step <= 2 ? "Load 3 sodas onto the cart first" : "Pick a glass and a garnish first");
+                if (m_done) Toast("Cheers! Tap New drink to mix another");
                 return;
             }
-            if (step >= 5)
+            if (!ReadyToShake)
             {
                 Wiggle(Shaker.transform);
-                Toast(m_done ? "Cheers! Tap New drink to mix another" : "Shaken! Now press Pour");
+                // Send the player straight to whatever is missing.
+                if (m_picked.Count < 3) { Toast("Load 3 sodas onto the cart first"); GoToStage(1); }
+                else if (m_glass < 0) { Toast("Pick a glass first"); GoToStage(2); }
+                else { Toast("Pick a garnish first"); GoToStage(3); }
                 return;
             }
-            AddShake(0.125f, true);
+            if (m_shake >= 1f)
+            {
+                Wiggle(Shaker.transform);
+                Toast("Shaken! Now press Pour");
+                return;
+            }
+            AddShake(0.2f, true);
         }
 
         public void AddShake(float amount, bool wobble)
         {
-            if (Step != 4 || amount <= 0f) return;
+            if (!ReadyToShake || m_done || m_pouring || m_shake >= 1f || amount <= 0f) return;
+            if (m_stage != 4 || !StepOpen) GoToStage(4);
             m_shake = Mathf.Min(1f, m_shake + amount);
             if (wobble)
             {
@@ -386,7 +558,8 @@ namespace Showcase.Experiences.BarCart
 
         public void Pour()
         {
-            if (Step != 5 || m_pouring) return;
+            if (m_done || m_pouring) return;
+            if (m_shake < 1f) { Toast(ReadyToShake ? "Shake it to 100% first" : "Finish the earlier steps first"); return; }
             StartCoroutine(PourRoutine());
         }
 
@@ -465,14 +638,6 @@ namespace Showcase.Experiences.BarCart
             Hud.ShowResult(DrinkName, body,
                 ("New drink", ResetAll),
                 ("Hub", () => { if (ShowcaseHub.Instance != null) ShowcaseHub.Instance.ReturnToHub(); }));
-        }
-
-        public void NextPressed()
-        {
-            int step = Step;
-            if (step == 1) ConfirmCart();
-            else if (step == 5) Pour();
-            else if (step == 6) ResetAll();
         }
 
         // ---------- Liquid ----------
@@ -692,7 +857,8 @@ namespace Showcase.Experiences.BarCart
         private void Refresh()
         {
             int step = Step;
-            if (step != m_lastStep && step == 4 && !m_done)
+            bool shakeTime = m_stage == 4 && !m_done;
+            if (step != m_lastStep && shakeTime)
             {
                 // Draw attention to the shaker once everything is in place.
                 Run(Shaker.transform, Wobble(Shaker.transform, 16f));
@@ -702,72 +868,133 @@ namespace Showcase.Experiences.BarCart
 
             if (m_stepDots != null)
             {
-                for (int i = 0; i < 5; i++)
+                for (int i = 0; i < StageCount; i++)
                 {
-                    int n = i + 1;
-                    bool done = n < step, current = n == step;
-                    m_stepDots[i].color = done ? Done : current ? Ui.Accent : Upcoming;
-                    m_stepNums[i].text = done ? "✓" : n.ToString();
+                    bool done = m_done || StageDone(i), current = !m_done && i == m_stage;
+                    m_stepDots[i].color = current ? Ui.Accent : done ? Done : Upcoming;
+                    m_stepNums[i].text = done && !current ? "√" : (i + 1).ToString();
                     m_stepNums[i].color = done || current ? Color.white : Ui.Muted;
                     m_stepLabels[i].color = current ? Ui.Ink : Ui.Muted;
                     m_stepLabels[i].fontStyle = current ? FontStyle.Bold : FontStyle.Normal;
-                    if (i < 4) m_stepLinks[i].color = n < step ? Done : Upcoming;
+                    if (i < StageCount - 1) m_stepLinks[i].color = m_done || StageDone(i) ? Done : Upcoming;
                 }
-                m_instruction.text = Instruction(step);
-                bool showNext = step == 1 || (step == 5 && !m_pouring) || step == 6;
-                m_next.gameObject.SetActive(showNext);
-                Ui.SetButtonLabel(m_next, step == 1 ? "Next ►" : step == 5 ? "Pour ►" : "New drink");
-                m_next.GetComponent<Image>().color = step == 6 ? Ui.Accent2 : step == 5 ? Ui.Good : Ui.Accent;
+                m_instruction.text = Instruction();
             }
 
             if (m_ring != null)
             {
-                bool show = (step == 4 || step == 5) && !m_pouring && !m_done;
-                m_ring.gameObject.SetActive(show);
+                m_ring.gameObject.SetActive(shakeTime && !m_pouring && ReadyToShake);
                 m_ringFill.fillAmount = m_shake;
                 m_ringFill.color = m_shake >= 1f ? Ui.Good : Ui.Accent;
                 m_ringText.text = Mathf.RoundToInt(m_shake * 100f) + "%";
                 m_ringCaption.text = m_shake >= 1f ? "Ready!" : "Shake!";
             }
 
-            if (m_bottleTags != null)
-                for (int i = 0; i < m_bottleTags.Length; i++)
-                {
-                    bool on = m_picked.Contains(i);
-                    m_bottleTags[i].text = (on ? "✓ " : "") + BarCartData.Flavors[i].Name;
-                    m_bottleTagBgs[i].color = on ? new Color(0.88f, 0.97f, 0.9f, 0.97f) : CardBg;
-                }
+            RefreshTags();
+            RefreshStep();
 
             if (Hud != null)
             {
-                Hud.SetHint(Hint(step));
-                Hud.SetScore(step <= 5 ? "Step " + step + "/5" : "Cheers!");
+                Hud.SetHint(m_done ? "" : "Tap a prop or open the steps to build your drink");
+                Hud.SetScore(m_done ? "Cheers!" : "Step " + step + "/" + StageCount);
+            }
+            if (m_stepButton != null)
+                Ui.SetButtonLabel(m_stepButton, "Step " + Mathf.Min(step, StageCount) + "/" + StageCount + "  ·  " + StepNames[Mathf.Min(step, StageCount) - 1] + "  ›");
+        }
+
+        private bool StageDone(int i)
+        {
+            switch (i)
+            {
+                case 0: return m_stage > 0 || m_picked.Count > 0;
+                case 1: return m_picked.Count == 3;
+                case 2: return m_glass >= 0;
+                case 3: return m_garnish >= 0;
+                default: return m_shake >= 1f;
             }
         }
 
-        private string Instruction(int step)
+        // Tray texts, √ badges and button states for the open step.
+        private void RefreshStep()
         {
-            switch (step)
+            if (!StepOpen || m_options == null) return;
+            Tray.SetTitle(StageTitle());
+            switch (m_stage)
             {
-                case 1: return "<b>" + BarCartData.Carts[m_cart] + "</b>\nTap the cart for another style";
-                case 2: return "<b>Sodas " + m_picked.Count + "/3</b>\nTap bottles on the shelf";
-                case 3: return "<b>Glass & garnish</b>\n" + (m_glass < 0 ? "Glass: tap one, left" : "Garnish: tap one, right");
-                case 4: return "<b>Shake it!</b>\nTap or wiggle the shaker";
-                case 5: return m_pouring ? "<b>Pouring...</b>\nWatch it fizz" : "<b>Shaken!</b>\nPour into the glass";
-                default: return "<b>" + DrinkName + "</b>\nRecipe card is ready";
+                case 0:
+                    for (int i = 0; i < m_options.Count; i++) m_options[i].Badge = i == m_cart ? "√" : null;
+                    break;
+                case 1:
+                    for (int i = 0; i < m_options.Count; i++)
+                    {
+                        bool on = m_picked.Contains(i);
+                        m_options[i].Badge = on ? "√" : null;
+                        m_options[i].Price = on ? "√ On the cart · tap to remove" : m_picked.Count >= 3 ? "Cart is full" : "Tap to add to the cart";
+                    }
+                    Tray.SetAction(1, "Next step ›", m_picked.Count == 3 ? Ui.Good : Ui.Muted);
+                    break;
+                case 2:
+                    for (int i = 0; i < m_options.Count; i++) m_options[i].Badge = i == m_glass ? "√" : null;
+                    break;
+                case 3:
+                    for (int i = 0; i < m_options.Count; i++)
+                    {
+                        m_options[i].Badge = i == m_garnish ? "√" : null;
+                        m_options[i].Price = i == m_garnish ? "√ On the glass" : "Tap to garnish";
+                    }
+                    break;
+                default:
+                    m_options[0].Price = m_pouring ? "Pouring..." : m_shake >= 1f ? "Shaken 100% · ready to pour" : "Shaken " + Mathf.RoundToInt(m_shake * 100f) + "%";
+                    bool ready = m_shake >= 1f && !m_pouring;
+                    Tray.SetAction(0, "‹ Back", Locked ? Ui.Muted : Ui.Accent, !m_pouring);
+                    Tray.SetAction(1, m_shake >= 1f ? "√ Shaken" : "Shake!", m_shake >= 1f || m_pouring ? Ui.Muted : Ui.Accent, !m_pouring);
+                    Tray.SetAction(2, "Pour ›", ready ? Ui.Good : Ui.Muted, !m_pouring);
+                    break;
+            }
+            Tray.Refresh();
+        }
+
+        // World tags: names over the sodas (√ once on the cart), and the current step's area pulses.
+        private void RefreshTags()
+        {
+            if (m_bottleTags != null)
+                for (int i = 0; i < m_bottleTags.Length; i++)
+                {
+                    if (m_bottleTags[i] == null) continue;
+                    bool on = m_picked.Contains(i);
+                    m_bottleTags[i].Set((on ? "√ " : "") + BarCartData.Flavors[i].Name, on ? TagDone : TagIdle);
+                    m_bottleTags[i].Show(!m_done);
+                }
+            if (m_cartTag != null)
+            {
+                m_cartTag.Set(BarCartData.Carts[m_cart]);
+                m_cartTag.Show(m_stage == 0 && !m_done);
+                m_cartTag.Pulse(m_stage == 0);
+            }
+            if (m_glassTag != null)
+            {
+                m_glassTag.Set(m_glass >= 0 ? "√ " + BarCartData.Glasses[m_glass].name : "Glasses", m_glass >= 0 ? TagDone : TagIdle);
+                m_glassTag.Show(!m_done && m_stage < 4);
+                m_glassTag.Pulse(m_stage == 2);
+            }
+            if (m_garnishTag != null)
+            {
+                m_garnishTag.Set(m_garnish >= 0 ? "√ " + BarCartData.Garnishes[m_garnish] : "Garnish", m_garnish >= 0 ? TagDone : TagIdle);
+                m_garnishTag.Show(!m_done && m_stage < 4);
+                m_garnishTag.Pulse(m_stage == 3);
             }
         }
 
-        private static string Hint(int step)
+        private string Instruction()
         {
-            switch (step)
+            if (m_done) return "<b>" + DrinkName + "</b>\nRecipe card is ready";
+            switch (m_stage)
             {
-                case 1: return "Tap the cart to restyle it, then press Next";
-                case 2: return "Tap 3 Lumo sodas to load the cart (tap again to put one back)";
-                case 3: return "Choose a glass (left tray) and a garnish (right tray)";
-                case 4: return "Tap the shaker again and again - or drag to wiggle it";
-                case 5: return "Press Pour, or tap the glass";
-                default: return "Your mocktail is ready - check the recipe card";
+                case 0: return "<b>" + BarCartData.Carts[m_cart] + "</b>\nChoose a cart style";
+                case 1: return "<b>Sodas " + m_picked.Count + "/3</b>\nLoad three Lumo sodas";
+                case 2: return "<b>Glass</b>\n" + (m_glass >= 0 ? BarCartData.Glasses[m_glass].name : "Pick a glass");
+                case 3: return "<b>Garnish</b>\n" + (m_garnish >= 0 ? BarCartData.Garnishes[m_garnish] : "Pick a garnish");
+                default: return m_pouring ? "<b>Pouring...</b>\nWatch it fizz" : m_shake >= 1f ? "<b>Shaken!</b>\nPour into the glass" : "<b>Shake it!</b>\nShake to 100%";
             }
         }
 
@@ -779,6 +1006,29 @@ namespace Showcase.Experiences.BarCart
             if (m_ring == null) BuildRing();
             if (m_recipe == null && RecipeAnchor != null) BuildRecipe();
             if (m_bottleTags == null && ShelfTagAnchor != null) BuildTags();
+            if (m_screenUi == null)
+            {
+                // Big "reopen the steps" button for when the tray is hidden (scene root: overlay canvas).
+                m_screenUi = new GameObject("BarCart Screen UI", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+                var canvas = m_screenUi.GetComponent<Canvas>();
+                canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+                canvas.sortingOrder = 45;   // under the HUD (toast/result draw on top)
+                var scaler = m_screenUi.GetComponent<CanvasScaler>();
+                scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+                scaler.referenceResolution = new Vector2(1080, 1920);
+                scaler.matchWidthOrHeight = 0.5f;
+                m_stepButton = Ui.Button(m_screenUi.transform, "Steps  ›", Ui.Accent, () => GoToStage(m_stage), 44, "Step Button");
+                Ui.Round(m_stepButton.GetComponent<Image>(), 60f);
+                m_stepButton.gameObject.AddComponent<Shadow>().effectDistance = new Vector2(0f, -6f);
+                // Bottom-left: clear of the HUD hint above and the Look button at the bottom right.
+                Ui.Place((RectTransform)m_stepButton.transform, new Vector2(0f, 0f), new Vector2(600, 130), new Vector2(30, 40));
+            }
+            m_screenUi.SetActive(true);
+            if (Tray != null)
+            {
+                Tray.Closed -= OnTrayClosed;
+                Tray.Closed += OnTrayClosed;
+            }
         }
 
         private static Sprite MakeSprite(bool ring)
@@ -822,19 +1072,19 @@ namespace Showcase.Experiences.BarCart
             stripe.raycastTarget = false;
             Ui.Place(stripe.rectTransform, new Vector2(0.5f, 1f), new Vector2(w, 14), Vector2.zero);
 
-            m_stepDots = new Image[5];
-            m_stepNums = new Text[5];
-            m_stepLabels = new Text[5];
-            m_stepLinks = new Image[4];
+            m_stepDots = new Image[StageCount];
+            m_stepNums = new Text[StageCount];
+            m_stepLabels = new Text[StageCount];
+            m_stepLinks = new Image[StageCount - 1];
             const float x0 = 84f, dx = 140f, dotY = -40f, dot = 96f;
-            for (int i = 0; i < 4; i++)
+            for (int i = 0; i < StageCount - 1; i++)
             {
                 var link = Ui.Panel(bg.transform, Upcoming, "Link");
                 link.raycastTarget = false;
                 m_stepLinks[i] = link;
                 Ui.Place(link.rectTransform, new Vector2(0f, 1f), new Vector2(dx - dot + 16, 10), new Vector2(x0 + i * dx + dot * 0.5f - 8, dotY - dot * 0.5f + 5));
             }
-            for (int i = 0; i < 5; i++)
+            for (int i = 0; i < StageCount; i++)
             {
                 float cx = x0 + i * dx;
                 m_stepDots[i] = Dot(bg.transform, Upcoming, dot, new Vector2(0f, 1f), new Vector2(cx - dot * 0.5f, dotY), "Step " + (i + 1));
@@ -844,11 +1094,12 @@ namespace Showcase.Experiences.BarCart
                 Ui.Place(m_stepLabels[i].rectTransform, new Vector2(0f, 1f), new Vector2(dx, 56), new Vector2(cx - dx * 0.5f, dotY - dot - 14));
             }
 
-            m_instruction = Ui.Label(bg.transform, "", 40, Ui.Ink, TextAnchor.MiddleLeft, FontStyle.Normal, "Instruction");
-            Ui.Place(m_instruction.rectTransform, new Vector2(0f, 0.5f), new Vector2(500, 230), new Vector2(x0 + 4 * dx + 76, -4));
-
-            m_next = Ui.Button(bg.transform, "Next ►", Ui.Accent, NextPressed, 50, "Next Button");
-            Ui.Place((RectTransform)m_next.transform, new Vector2(1f, 0.5f), new Vector2(230, 150), new Vector2(-24, -4));
+            // Read-only: choosing and acting happen in the screen tray.
+            m_instruction = Ui.Label(bg.transform, "", 50, Ui.Ink, TextAnchor.MiddleLeft, FontStyle.Normal, "Instruction");
+            Ui.Place(m_instruction.rectTransform, new Vector2(0f, 0.5f), new Vector2(w - (x0 + 4 * dx + 90) - 30, 240), new Vector2(x0 + 4 * dx + 90, -4));
+            m_instruction.resizeTextForBestFit = true;
+            m_instruction.resizeTextMinSize = 34;
+            m_instruction.resizeTextMaxSize = 50;
         }
 
         private void BuildRing()
@@ -886,7 +1137,7 @@ namespace Showcase.Experiences.BarCart
             holder.SetParent(RecipeAnchor, false);
             // Full facing (not yaw-only) so the card stays readable from the steep tabletop angle.
             holder.gameObject.AddComponent<Billboard>().YawOnly = false;
-            var canvas = Ui.WorldCanvas("Canvas", holder, new Vector2(w, h), 0.76f);
+            var canvas = Ui.WorldCanvas("Canvas", holder, new Vector2(w, h), 0.9f);
             canvas.sortingOrder = 6;
             var bg = Ui.Panel(canvas.transform, new Color(1f, 0.98f, 0.95f, 1f), "Background");
             bg.raycastTarget = false;
@@ -929,42 +1180,21 @@ namespace Showcase.Experiences.BarCart
 
         private void BuildTags()
         {
-            m_bottleTags = new Text[Bottles.Length];
-            m_bottleTagBgs = new Image[Bottles.Length];
+            m_bottleTags = new WorldTag[Bottles.Length];
             for (int i = 0; i < Bottles.Length; i++)
             {
-                var f = BarCartData.Flavors[i];
-                float x = ShelfTagAnchor.InverseTransformPoint(m_home[Bottles[i].transform].Parent.TransformPoint(m_home[Bottles[i].transform].Pos)).x;
-                var (bg, label) = Tag(ShelfTagAnchor, new Vector3(x, 0f, 0f), Quaternion.identity, f.Name, f.Color, 0.5f);
-                m_bottleTags[i] = label;
-                m_bottleTagBgs[i] = bg;
+                var h = m_home[Bottles[i].transform];
+                float x = ShelfTagAnchor.InverseTransformPoint(h.Parent.TransformPoint(h.Pos)).x;
+                m_bottleTags[i] = WorldTag.Create(ShelfTagAnchor, new Vector3(x, 0f, -0.02f), BarCartData.Flavors[i].Name, 0.075f);
             }
-            for (int i = 0; i < Glasses.Length && GlassTagAnchor != null; i++)
-            {
-                float x = GlassTagAnchor.InverseTransformPoint(Glasses[i].transform.position).x;
-                Tag(GlassTagAnchor, new Vector3(x, 0f, 0f), Quaternion.Euler(50f, 0f, 0f), BarCartData.Glasses[i].name, Ui.Accent2, 0.33f);
-            }
-            for (int i = 0; i < Garnishes.Length && GarnishTagAnchor != null; i++)
-            {
-                float x = GarnishTagAnchor.InverseTransformPoint(Garnishes[i].transform.position).x;
-                Tag(GarnishTagAnchor, new Vector3(x, 0f, 0f), Quaternion.Euler(50f, 0f, 0f), BarCartData.Garnishes[i], Ui.Good, 0.33f);
-            }
-        }
-
-        private (Image, Text) Tag(Transform parent, Vector3 localPos, Quaternion rot, string text, Color dot, float worldWidth)
-        {
-            const float w = 340f, h = 84f;
-            var canvas = Ui.WorldCanvas("Tag " + text, parent, new Vector2(w, h), worldWidth * 0.62f);
-            canvas.transform.localPosition = localPos;
-            canvas.transform.localRotation = rot;
-            var bg = Ui.Panel(canvas.transform, CardBg, "Background");
-            bg.raycastTarget = false;
-            Ui.Stretch(bg.rectTransform);
-            Dot(bg.transform, dot, 46, new Vector2(0f, 0.5f), new Vector2(14, 0), "Dot");
-            var label = Ui.Label(bg.transform, text, 36, Ui.Ink, TextAnchor.MiddleLeft, FontStyle.Bold, "Label");
-            label.horizontalOverflow = HorizontalWrapMode.Overflow;
-            Ui.Place(label.rectTransform, new Vector2(0f, 0.5f), new Vector2(w - 80, h), new Vector2(70, 0));
-            return (bg, label);
+            if (Glasses.Length > 0)
+                m_glassTag = WorldTag.Create(m_home[Glasses[0].transform].Parent, new Vector3(0f, 0.3f, 0f), "Glasses", 0.1f);
+            if (Garnishes.Length > 0)
+                m_garnishTag = WorldTag.Create(m_home[Garnishes[0].transform].Parent, new Vector3(0f, 0.22f, 0f), "Garnish", 0.1f);
+            var cartTagAnchor = new GameObject("Cart Tag Anchor").transform;
+            cartTagAnchor.SetParent(CartTop.parent, false);
+            cartTagAnchor.localPosition = new Vector3(CartTop.localPosition.x, 0.6f, CartTop.localPosition.z - 0.1f);
+            m_cartTag = WorldTag.Create(cartTagAnchor, Vector3.zero, BarCartData.Carts[0], 0.1f);
         }
 
         // ---------- Automated play-through ----------
@@ -974,12 +1204,12 @@ namespace Showcase.Experiences.BarCart
             if (m_done) return;
             CacheHomes();
             EnsureUi();
-            m_cartConfirmed = true;
             for (int i = 0; m_picked.Count < 3 && i < Bottles.Length; i++)
                 if (!m_picked.Contains(i)) m_picked.Add(i);
             if (m_glass < 0) m_glass = 0;
             if (m_garnish < 0) m_garnish = 0;
             m_shake = 1f;
+            m_stage = StageCount - 1;
             StopAllCoroutines();
             m_anims.Clear();
             for (int k = 0; k < m_picked.Count; k++)
@@ -987,6 +1217,8 @@ namespace Showcase.Experiences.BarCart
                 var t = Bottles[m_picked[k]].transform;
                 Place(t, CartTop, BottleSlots[k] + m_home[t].PivotOffset, m_home[t].Rot, m_home[t].Scale);
             }
+            CloseStep();
+            FreeCamera.Instance?.Frame(FocusPoint, FocusDistance, FocusPitch);
             FinishDrink(true);
             ShowResultPanel();
         }
@@ -994,51 +1226,69 @@ namespace Showcase.Experiences.BarCart
         public override IEnumerator SelfTest()
         {
             ResetAll();
-            yield return new WaitForSeconds(0.3f);
+            yield return new WaitForSeconds(0.7f);
             if (Step != 1) Debug.LogError("[SELFTEST] fresh state should be step 1, got " + Step);
+            if (!StepOpen || Tray.Options.Count != Carts.Length) Debug.LogError("[SELFTEST] cart step tray not open with " + Carts.Length + " styles");
+            Snapshot("tray");
 
-            // 1. Cart style
-            CycleCart();
+            // 1. Cart style from the tray.
+            Tray.Select(1);
             yield return new WaitForSeconds(0.4f);
             if (CartIndex != 1 || !Carts[1].activeSelf || Carts[0].activeSelf) Debug.LogError("[SELFTEST] cart swap did not show cart 2 only");
             if (Mathf.Abs(CartTop.localPosition.y - CartTops[1]) > 0.001f) Debug.LogError("[SELFTEST] cart top did not move to the new cart's height");
-            NextPressed();
-            if (Step != 2) Debug.LogError("[SELFTEST] Next did not move on to step 2");
+            Tray.Press(0);   // "Next step ›"
+            if (Step != 2 || !StepOpen || Tray.Options.Count != Bottles.Length) Debug.LogError("[SELFTEST] Next did not open the soda step");
+            Tray.Press(1);   // Next without sodas must be refused
+            if (Step != 2) Debug.LogError("[SELFTEST] moved on without 3 sodas");
 
-            // 2. Sodas, including one change of mind
-            TapBottle(0); TapBottle(2); TapBottle(4);
+            // 2. Sodas from tray tiles, one change of mind, one tap in the world.
+            Tray.Select(0); Tray.Select(2); Tray.Select(4);
             yield return new WaitForSeconds(0.6f);
-            TapBottle(2);
+            Tray.Select(2);
             yield return new WaitForSeconds(0.6f);
-            if (Picked.Count != 2 || Picked.Contains(2)) Debug.LogError("[SELFTEST] un-picking a bottle failed");
+            if (Picked.Count != 2 || Picked.Contains(2)) Debug.LogError("[SELFTEST] un-picking a soda failed");
             if (Bottles[2].transform.parent == CartTop) Debug.LogError("[SELFTEST] un-picked bottle is still on the cart");
             TapBottle(5);
+            if (Tray.Selected != 5) Debug.LogError("[SELFTEST] tapping a bottle did not select it in the tray");
             TapBottle(1);   // a fourth one must be refused
             yield return new WaitForSeconds(0.6f);
             var expected = new[] { 0, 4, 5 };
             if (!Picked.OrderBy(i => i).SequenceEqual(expected)) Debug.LogError("[SELFTEST] picked " + string.Join(",", Picked) + ", expected 0,4,5");
             foreach (int i in expected)
+            {
                 if (Bottles[i].transform.parent != CartTop) Debug.LogError("[SELFTEST] " + BarCartData.Flavors[i].Name + " is not on the cart");
-            if (Step != 3) Debug.LogError("[SELFTEST] three sodas should lead to step 3, got " + Step);
+                if (Tray.Options[i].Badge != "√") Debug.LogError("[SELFTEST] tray has no √ on " + BarCartData.Flavors[i].Name);
+            }
+            Snapshot("sodas");
 
-            // 3. Glass and garnish
-            ShakeTap();
-            if (ShakeProgress > 0f) Debug.LogError("[SELFTEST] shaking was allowed before glass/garnish");
-            TapGlass(0);
-            TapGarnish(2);
+            // 3. Glass: the step pre-picks one so the cart is never empty-handed.
+            Tray.Press(1);   // "Next step ›"
             yield return new WaitForSeconds(0.6f);
-            TapGlass(1);
+            if (Step != 3 || GlassIndex != 0) Debug.LogError("[SELFTEST] glass step: step " + Step + ", glass " + GlassIndex);
+            if (Glasses[0].transform.parent != CartTop) Debug.LogError("[SELFTEST] pre-picked glass is not on the cart");
+            ShakeTap();   // too early: jumps to the missing garnish step instead
+            if (ShakeProgress > 0f) Debug.LogError("[SELFTEST] shaking was allowed before the garnish");
+            if (Step != 4) Debug.LogError("[SELFTEST] early shake did not jump to the garnish step");
+            Tray.Press(0);   // "‹ Back" to the glass
+            if (Step != 3) Debug.LogError("[SELFTEST] Back did not return to the glass step");
+            Tray.Select(1);
+            Tray.Press(1);   // "Next step ›" -> garnish
+            Tray.Select(2);
             yield return new WaitForSeconds(0.7f);
-            if (GlassIndex != 1 || GarnishIndex != 2) Debug.LogError("[SELFTEST] glass/garnish choice wrong");
+            if (GlassIndex != 1 || GarnishIndex != 2) Debug.LogError("[SELFTEST] glass/garnish choice wrong (" + GlassIndex + ", " + GarnishIndex + ")");
             if (Garnishes[2].transform.parent != GlassRims[1]) Debug.LogError("[SELFTEST] garnish did not follow the new glass");
             if (Glasses[0].transform.parent == CartTop) Debug.LogError("[SELFTEST] replaced glass did not go back to its tray");
-            if (Step != 4) Debug.LogError("[SELFTEST] expected step 4 (shake), got " + Step);
+            Snapshot("garnish");
 
-            // 4. Shake to 100%
+            // 4. Shake to 100% with the big button.
+            Tray.Press(1);
+            if (Step != 5) Debug.LogError("[SELFTEST] expected step 5 (shake), got " + Step);
+            Tray.Press(2);   // Pour before shaking must be refused
+            if (m_pouring || IsDone) Debug.LogError("[SELFTEST] poured before shaking");
             int taps = 0;
             while (ShakeProgress < 1f && taps < 20)
             {
-                ShakeTap();
+                Tray.Press(1);   // "Shake!"
                 taps++;
                 yield return new WaitForSeconds(0.12f);
             }
@@ -1046,10 +1296,13 @@ namespace Showcase.Experiences.BarCart
             if (m_ringText != null && m_ringText.text != "100%") Debug.LogError("[SELFTEST] ring shows " + m_ringText.text);
             TapBottle(1);
             if (Picked.Contains(1)) Debug.LogError("[SELFTEST] bottles changed after shaking");
-            if (Step != 5) Debug.LogError("[SELFTEST] expected step 5 (pour), got " + Step);
+            Tray.Press(0);   // Back is locked once shaken
+            if (Step != 5) Debug.LogError("[SELFTEST] went back after shaking");
+            yield return new WaitForSeconds(0.5f);
+            Snapshot("shake");
 
             // 5. Pour
-            NextPressed();
+            Tray.Press(2);
             float waited = 0f;
             while (!IsDone && waited < 8f) { waited += Time.deltaTime; yield return null; }
             yield return new WaitForSeconds(1.2f);
@@ -1061,9 +1314,10 @@ namespace Showcase.Experiences.BarCart
                 if (!RecipeText.Contains(BarCartData.Flavors[i].Name)) Debug.LogError("[SELFTEST] recipe misses " + BarCartData.Flavors[i].Name);
             if (RecipeText.Contains(BarCartData.Flavors[2].Name)) Debug.LogError("[SELFTEST] recipe lists the un-picked soda");
             if (Hud != null && !Hud.ResultVisible) Debug.LogError("[SELFTEST] result panel not shown");
+            if (Tray.IsOpen) Debug.LogError("[SELFTEST] tray still open on the result");
             Debug.Log("[SELFTEST] barcart: made '" + DrinkName + "' with " + string.Join(", ", Picked.Select(i => BarCartData.Flavors[i].Name)));
 
-            // Reset must return to an empty cart.
+            // Reset must return to an empty cart and the first step.
             ResetAll();
             yield return new WaitForSeconds(0.3f);
             if (Step != 1 || Picked.Count != 0 || GlassIndex >= 0 || GarnishIndex >= 0 || ShakeProgress > 0f || IsDone)
@@ -1072,6 +1326,7 @@ namespace Showcase.Experiences.BarCart
                 Debug.LogError("[SELFTEST] reset left props on the cart");
             if (Liquids.Any(l => l.GetComponent<Renderer>().enabled)) Debug.LogError("[SELFTEST] reset left liquid in a glass");
             if (RecipeVisible || (Hud != null && Hud.ResultVisible)) Debug.LogError("[SELFTEST] reset left the recipe/result visible");
+            if (!StepOpen) Debug.LogError("[SELFTEST] reset did not reopen the first step");
 
             // Finish on the completed state for the screenshot.
             DebugComplete();

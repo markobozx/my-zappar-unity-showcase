@@ -59,8 +59,8 @@ namespace Showcase.EditorTools.Experiences
             exp.Id = "treasure";
             exp.Title = "Treasure Rain";
             exp.Hint = "Tap START, then tap the falling treasure.\nAvoid the bomb crates!";
-            exp.FocusPoint = new Vector3(0f, 0.25f, 0.05f);
-            exp.FocusDistance = 4.6f;
+            exp.FocusPoint = new Vector3(0f, 0.22f, 0.02f);
+            exp.FocusDistance = 3.9f;
             exp.FocusPitch = 48f;
             ShowcaseBuildContext.Set(exp, "m_templates", templates);
             ShowcaseBuildContext.Set(exp, "m_startButton", start);
@@ -116,7 +116,7 @@ namespace Showcase.EditorTools.Experiences
             topText.horizontalOverflow = HorizontalWrapMode.Overflow;
             topText.gameObject.AddComponent<Outline>().effectColor = new Color(0.45f, 0.08f, 0.06f, 0.8f);
 
-            var tag = Ui.WorldCanvas("Tag", btn, new Vector2(620, 110), 0.62f);
+            var tag = Ui.WorldCanvas("Tag", btn, new Vector2(620, 110), 0.82f);
             tag.transform.localPosition = new Vector3(0f, 0.3f, 0.1f);
             tag.transform.localRotation = Quaternion.Euler(20f, 0f, 0f);
             var tagBg = Ui.Panel(tag.transform, new Color(1f, 0.98f, 0.95f, 0.95f), "Background");
@@ -141,9 +141,9 @@ namespace Showcase.EditorTools.Experiences
             holder.localPosition = new Vector3(0f, 2f, 0f);
 
             var items = new TreasureItem[5];
-            items[(int)TreasureKind.Gold] = PackTemplate(ctx, holder, TreasureKind.Gold, "Gold_Bar", 0.22f);
-            items[(int)TreasureKind.Coins] = PackTemplate(ctx, holder, TreasureKind.Coins, "Money_Coins_Stack_Medium", 0.18f);
-            items[(int)TreasureKind.Gems] = PackTemplate(ctx, holder, TreasureKind.Gems, "Gems_Pile_Small", 0.2f);
+            items[(int)TreasureKind.Gold] = PackTemplate(ctx, holder, TreasureKind.Gold, "Gold_Bar", 0.27f);
+            items[(int)TreasureKind.Coins] = PackTemplate(ctx, holder, TreasureKind.Coins, "Money_Coins_Stack_Medium", 0.22f);
+            items[(int)TreasureKind.Gems] = PackTemplate(ctx, holder, TreasureKind.Gems, "Gems_Pile_Small", 0.25f);
 
             var golden = Wrapper(holder, TreasureKind.Golden);
             ctx.Primitive(PrimitiveType.Cube, "Box", golden.transform, Vector3.zero, Vector3.one * 0.17f, GoldBox, false);
@@ -156,6 +156,7 @@ namespace Showcase.EditorTools.Experiences
                     var bar = ctx.Primitive(PrimitiveType.Cube, "Star", golden.transform, new Vector3(0f, 0f, side * 0.087f), new Vector3(0.11f, 0.024f, 0.006f), Cream, false);
                     bar.transform.localRotation = Quaternion.Euler(0f, 0f, 90f + k * 60f);
                 }
+            golden.transform.localScale = Vector3.one * 1.2f;   // bigger targets for phone taps
             items[(int)TreasureKind.Golden] = golden;
 
             var bomb = Wrapper(holder, TreasureKind.Bomb);
@@ -164,6 +165,7 @@ namespace Showcase.EditorTools.Experiences
             ctx.Primitive(PrimitiveType.Cube, "Stripe V", bomb.transform, Vector3.zero, new Vector3(0.05f, 0.196f, 0.196f), BombStripe, false);
             ctx.Primitive(PrimitiveType.Cylinder, "Fuse", bomb.transform, new Vector3(0f, 0.118f, 0f), new Vector3(0.024f, 0.022f, 0.024f), new Color(0.35f, 0.33f, 0.36f), false);
             ctx.Primitive(PrimitiveType.Sphere, "Spark", bomb.transform, new Vector3(0f, 0.152f, 0f), Vector3.one * 0.042f, new Color(1f, 0.62f, 0.12f), false);
+            bomb.transform.localScale = Vector3.one * 1.15f;
             items[(int)TreasureKind.Bomb] = bomb;
 
             holder.gameObject.SetActive(false);
