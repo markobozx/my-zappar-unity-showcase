@@ -243,6 +243,21 @@ public static class FlatKitConversion
         return AssetDatabase.LoadAssetAtPath<Texture2D>(RampPath);
     }
 
+    // Registers a material created by a builder so ApplyStyleToAll keeps it in line, and styles it now.
+    public static void Track(string path, string originalShader)
+    {
+        var record = LoadRecord();
+        if (!record.entries.Any(e => e.path == path))
+        {
+            record.entries.Add(new Entry { path = path, originalShader = originalShader });
+            SaveRecord(record);
+        }
+        var m = AssetDatabase.LoadAssetAtPath<Material>(path);
+        if (m == null || m.shader == null || m.shader.name != FlatKitShader) return;
+        var ramp = AssetDatabase.LoadAssetAtPath<Texture2D>(RampPath) ?? StepRamp(LoadOrCreateStyle().Steps);
+        ApplyStyle(m, LoadOrCreateStyle(), ramp);
+    }
+
     public static void ApplyStyleToAll()
     {
         var style = LoadOrCreateStyle();

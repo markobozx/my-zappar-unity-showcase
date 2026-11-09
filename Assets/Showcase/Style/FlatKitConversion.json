@@ -739,6 +739,58 @@
         {
             "path": "Assets/Showcase/Materials/Sun.mat",
             "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/Showcase/Materials/Toon F2F0F7.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/Showcase/Materials/Toon 8C99C7.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/Showcase/Materials/Toon FF8C73.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/Showcase/Materials/Toon FFFFFF.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/Showcase/Materials/Toon FFC766.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/Showcase/Materials/Toon 9E80FF.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/Showcase/Materials/Toon 66CCD9.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/Showcase/Materials/Toon FFD959.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/Showcase/Materials/Toon 8CD98C.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/Showcase/Materials/Toon D99E73.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/Showcase/Materials/Toon F28CCC.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/Showcase/Materials/Toon 80B2FF.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/Showcase/Materials/Toon BF8CE6.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
         }
     ]
 }

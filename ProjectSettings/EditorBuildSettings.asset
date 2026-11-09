@@ -6,9 +6,6 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Scenes/URP Basic.unity
-    guid: 9d7087d6ee5594387aceb1a489e0f6bc
-  - enabled: 1
-    path: Assets/Scenes/Image Tracking 3D Animation.unity
-    guid: 82cc1c34a9ac14e52aa0f28415f5d360
+    path: Assets/Scenes/Showcase.unity
+    guid: 81c65382a074149609c21ae3a1540fb3
   m_configObjects: {}

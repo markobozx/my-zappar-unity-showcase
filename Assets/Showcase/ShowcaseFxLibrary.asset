@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ad10541038e854a5f9fca2d07d8fa558, type: 3}
+  m_Name: ShowcaseFxLibrary
+  m_EditorClassIdentifier: Assembly-CSharp::Showcase.ShowcaseFxLibrary
+  Hit: {fileID: 4021103657954561961, guid: 5c755f9bc5253ea418e919994537dcc7, type: 3}
+  Poof: {fileID: 9157105887711914197, guid: c4f829cb7dd4b864caf8832ec5b1ee55, type: 3}
+  Pickup: {fileID: 6811810496045127516, guid: 64ce60e4876281e4da34f46ee5244462, type: 3}
+  Sparkle: {fileID: 3618318350582324276, guid: 8a828aab65104924d91f2a3a6cf90efd, type: 3}
+  Confetti: {fileID: 2060212803351811498, guid: 38b99d63cdad9994b89d14c10a8783ce,
+    type: 3}
+  Smoke: {fileID: 395031058680739610, guid: b2f0b8902a31c8a46a1c4bb24ed9ea36, type: 3}
+  Explosion: {fileID: 2433282508537954060, guid: 3ef3ae421f71c5c4e97fe12dc2fc6312,
+    type: 3}
+  Heart: {fileID: 8702453489696329715, guid: 453e29524a7762b48a38e197575325b1, type: 3}
+  Stars: {fileID: 8533296111543935201, guid: e51b13faed2e79445998e76de6ad078d, type: 3}
+  Magic: {fileID: 1054623692228919799, guid: bd5703d32b8e83a458aaf927f2cc030d, type: 3}
+  DefaultScale: 0.25
