@@ -1,0 +1,744 @@
+{
+    "entries": [
+        {
+            "path": "Assets/KayKit/Packs/Bits/KayKit - Resource Bits (for Unity)/Demo/Demo_Floor.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/KayKit/Packs/Bits/KayKit - Resource Bits (for Unity)/Materials/resource.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/KayKit/Packs/Bits/KayKit - Restaurant Bits (For Unity)/Demo/Demo_Floor.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/KayKit/Packs/Bits/KayKit - Restaurant Bits (For Unity)/Materials/restaurant.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/Cosmic_Retro_Mega_Bundle/Cosmic_Retro_Laboratory_Props/DemoScene/Floor.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/Cosmic_Retro_Mega_Bundle/Cosmic_Retro_Laboratory_Props/Materials/Cosmic_Retro_Laboratory_Props.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/Cosmic_Retro_Mega_Bundle/Cosmic_Retro_Mesa_Props/Materials/Cosmic_Retro_Mesa_Props.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/Cosmic_Retro_Mega_Bundle/Cosmic_Retro_Station_Props/Demo_Scene/Cosmic_Retro_Station_Props_Floor.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/Cosmic_Retro_Mega_Bundle/Cosmic_Retro_Station_Props/Materials/Cosmic_Retro_Station_Props_1.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/Cosmic_Retro_Mega_Bundle/Cosmic_Retro_Station_Props/Models/CR_Bed_Pillow.fbx",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/Cosmic_Retro_Mega_Bundle/Cosmic_Retro_Station_Props/Models/CR_Bed_Quilt.fbx",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/Cosmic_Retro_Mega_Bundle/Cosmic_Retro_Station_Props/Models/EnvironmentParts/Floor/Retro_station_Floor_01_Utility_Trench.fbx",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/Cosmic_Retro_Mega_Bundle/Cosmic_Retro_Station_Props/Models/EnvironmentParts/Floor/Retro_station_Floor_03_Utility_Trench.fbx",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Brick_1.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Brick_2.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Brick_3.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Brick_4.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Brick_5.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Brick_6.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Color.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Floor.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Gradient_Blue.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Gradient_Green.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Gradient_Purple.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Gradient_Red.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Gradient_White.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Gradient_Yellow.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Tile_1.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Tile_2.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Tile_3.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Tile_4.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Tile_5.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Tile_6.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Tile_7.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Tile_8.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Tile_9.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Tile_10.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Tile_11.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Tile_12.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Wall_Edge.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Wall_Side_1.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Wall_Side_2.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Wallpaper_1.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Wallpaper_2.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Wallpaper_3.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Wallpaper_4.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Wallpaper_5.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Wallpaper_6.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Wallpaper_7.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Wallpaper_8.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Wallpaper_9.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Wallpaper_10.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Wallpaper_11.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Wallpaper_12.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Wood_1.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Wood_2.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Wood_3.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Wood_4.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Wood_5.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/ithappy/Furniture_Cute/Materials/Wood_6.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/Synty/PolygonGeneric/Materials/Alts/Generic_01_A.mat",
+            "originalShader": "Synty/Generic_Standard"
+        },
+        {
+            "path": "Assets/Synty/PolygonGeneric/Materials/Alts/Generic_01_B.mat",
+            "originalShader": "Synty/Generic_Standard"
+        },
+        {
+            "path": "Assets/Synty/PolygonGeneric/Materials/Alts/Generic_01_C.mat",
+            "originalShader": "Synty/Generic_Standard"
+        },
+        {
+            "path": "Assets/Synty/PolygonGeneric/Materials/Alts/Generic_02_A.mat",
+            "originalShader": "Synty/Generic_Standard"
+        },
+        {
+            "path": "Assets/Synty/PolygonGeneric/Materials/Alts/Generic_02_B.mat",
+            "originalShader": "Synty/Generic_Standard"
+        },
+        {
+            "path": "Assets/Synty/PolygonGeneric/Materials/Alts/Generic_02_C.mat",
+            "originalShader": "Synty/Generic_Standard"
+        },
+        {
+            "path": "Assets/Synty/PolygonGeneric/Materials/Alts/Generic_03_A.mat",
+            "originalShader": "Synty/Generic_Standard"
+        },
+        {
+            "path": "Assets/Synty/PolygonGeneric/Materials/Alts/Generic_03_B.mat",
+            "originalShader": "Synty/Generic_Standard"
+        },
+        {
+            "path": "Assets/Synty/PolygonGeneric/Materials/Alts/Generic_03_C.mat",
+            "originalShader": "Synty/Generic_Standard"
+        },
+        {
+            "path": "Assets/Synty/PolygonGeneric/Materials/Alts/Generic_04_A.mat",
+            "originalShader": "Synty/Generic_Standard"
+        },
+        {
+            "path": "Assets/Synty/PolygonGeneric/Materials/Alts/Generic_04_B.mat",
+            "originalShader": "Synty/Generic_Standard"
+        },
+        {
+            "path": "Assets/Synty/PolygonGeneric/Materials/Alts/Generic_04_C.mat",
+            "originalShader": "Synty/Generic_Standard"
+        },
+        {
+            "path": "Assets/Synty/PolygonGeneric/Materials/FX/Generic_Blank.mat",
+            "originalShader": "Synty/Generic_Standard"
+        },
+        {
+            "path": "Assets/Synty/PolygonGeneric/Materials/Generic_Brick.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonGeneric/Materials/Generic_Carpet.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonGeneric/Materials/Generic_Cloud.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonGeneric/Materials/Generic_Concrete.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonGeneric/Materials/Generic_Dirt.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonGeneric/Materials/Generic_Glass_Opaque.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonGeneric/Materials/Generic_Grass.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonGeneric/Materials/Generic_Ivy.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonGeneric/Materials/Generic_Overview_Map_Ground.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonGeneric/Materials/Generic_Plaster.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonGeneric/Materials/Generic_Road.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonGeneric/Materials/Generic_Rock.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonGeneric/Materials/Generic_Skyline.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonGeneric/Materials/Generic_Triplanar_Grass_01.mat",
+            "originalShader": "Synty/PolygonShader"
+        },
+        {
+            "path": "Assets/Synty/PolygonGeneric/Materials/Generic_Water.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonGeneric/Materials/Generic_Wood.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonGeneric/Materials/Glass_Opaque_01.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonGeneric/Materials/Waterflow_01.mat",
+            "originalShader": "Synty/PolygonShader"
+        },
+        {
+            "path": "Assets/Synty/PolygonGeneric/Models/FX/FX_LightRay_Cube_01.fbx",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/Synty/PolygonGeneric/Models/FX/FX_LightRay_Round_01.fbx",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/Synty/PolygonGeneric/Models/FX/FX_SunShafts_01.fbx",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/Synty/PolygonGeneric/Models/SM_Gen_Env_Water_Plane_01.fbx",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/Synty/PolygonGeneric/Shaders/Generic_Basic.shadergraph",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonGeneric/Shaders/Generic_Basic_Bloody.shadergraph",
+            "originalShader": "Synty/Generic_Basic_Bloody"
+        },
+        {
+            "path": "Assets/Synty/PolygonGeneric/Shaders/Generic_Basic_Specular.shadergraph",
+            "originalShader": "Synty/Generic_Basic_Specular"
+        },
+        {
+            "path": "Assets/Synty/PolygonGeneric/Shaders/Generic_Basic_Specular_Bloody.shadergraph",
+            "originalShader": "Synty/Generic_Basic_Specular_Bloody"
+        },
+        {
+            "path": "Assets/Synty/PolygonGeneric/Shaders/Generic_Standard.shadergraph",
+            "originalShader": "Synty/Generic_Standard"
+        },
+        {
+            "path": "Assets/Synty/PolygonGeneric/Shaders/PolygonShader.shadergraph",
+            "originalShader": "Synty/PolygonShader"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Alts/PolygonClub_Mat_01_A.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Alts/PolygonNightclub_Mat_01_A_Metallic.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Alts/PolygonNightclubs_01_A.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Alts/PolygonNightclubs_01_B.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Alts/PolygonNightclubs_01_C.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Alts/PolygonNightclubs_02_A.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Alts/PolygonNightclubs_02_B.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Alts/PolygonNightclubs_02_C.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Alts/PolygonNightclubs_03_A.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Alts/PolygonNightclubs_03_B.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Alts/PolygonNightclubs_03_C.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Alts/PolygonNightclubs_04_A.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Alts/PolygonNightclubs_04_B.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Alts/PolygonNightclubs_04_C.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Base/Black_01.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Base/Brick_Brown_01.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Base/Brick_Brown_01_Neon.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Base/Brick_Grey_01.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Base/Carpet_01.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Base/Concrete_01.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Base/Wood_01.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/FX/Background_Lights_01.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/FX/Background_Lights_02.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/FX/Cars_01.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Misc/Background_01_Glow.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Misc/Background_02_Glow.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Misc/Background_06_Alt.mat",
+            "originalShader": "Synty/Generic_Basic_Specular"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Misc/Black_01.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Misc/Building_01.mat",
+            "originalShader": "Synty/Generic_Basic_Specular"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Misc/City_Background_01.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Misc/Clouds_01.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Misc/Crane_Mat_01.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Misc/Disco_Ball_01.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Misc/Fence_01.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Misc/Grey_01.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Misc/Mirror_01.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Misc/Scene_Tape_01.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Walls_Floors/Brick_Brown_NEON_01.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Walls_Floors/Ceiling_01.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Walls_Floors/Concrete_01.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Walls_Floors/Concrete_02.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Walls_Floors/Concrete_03.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Walls_Floors/Concrete_04.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Walls_Floors/Concrete_Grunge_01.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Walls_Floors/Floor_Wood_01.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Walls_Floors/Floor_Zebra_01.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Walls_Floors/LED_Panel_01.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Walls_Floors/LightBox_01.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Walls_Floors/LightBox_02.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Walls_Floors/Tiles_01.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Walls_Floors/Tiles_02.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Walls_Floors/Tiles_03.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Walls_Floors/Triangles_Wall_01.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Walls_Floors/Wall_01.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Walls_Floors/Wall_02.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Walls_Floors/Wall_03.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Walls_Floors/Wall_04.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Walls_Floors/Wall_05.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Walls_Floors/Wall_05_Neon_01.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Walls_Floors/Wall_05_Spot.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Walls_Floors/Wall_06.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Walls_Floors/Wall_07.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Walls_Floors/Wall_08.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Walls_Floors/Wall_09.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Walls_Floors/Wall_10.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Walls_Floors/Wall_11.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Walls_Floors/Wall_12.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Walls_Floors/Wood_01.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Walls_Floors/Wood_02.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Materials/Walls_Floors/Wood_03.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Models/Materials/PolygonCity_Texture.mat",
+            "originalShader": "Synty/Generic_Basic"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Models/SM_Env_Skyline_01.fbx",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/Synty/PolygonNightclubs/Models/SM_Prop_Mount_01.fbx",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/Showcase/Materials/Coral.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/Showcase/Materials/Floor.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/Showcase/Materials/Pad Cute Furniture.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/Showcase/Materials/Pad Nightclub.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/Showcase/Materials/Pad Resources.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/Showcase/Materials/Pad Restaurant.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/Showcase/Materials/Pad Sci-Fi.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/Showcase/Materials/Sky.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/Showcase/Materials/Stage Rim.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/Showcase/Materials/Stage.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        },
+        {
+            "path": "Assets/Showcase/Materials/Sun.mat",
+            "originalShader": "Universal Render Pipeline/Lit"
+        }
+    ]
+}

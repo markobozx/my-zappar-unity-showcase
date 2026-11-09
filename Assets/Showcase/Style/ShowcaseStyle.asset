@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0e5fda59864b74ff1a091cae8858faab, type: 3}
+  m_Name: ShowcaseStyle
+  m_EditorClassIdentifier: Assembly-CSharp-Editor::ShowcaseStyle
+  Mode: 2
+  Steps: 3
+  ShadeTint: {r: 0.62, g: 0.6, b: 0.78, a: 1}
+  SelfShadingSize: 0.45
+  ShadowEdgeSize: 0.05
+  Flatness: 0.85
+  Rim: 1
+  RimColor: {r: 1, g: 1, b: 1, a: 0.35}
+  RimSize: 0.25
+  Specular: 0
+  SpecularColor: {r: 1, g: 1, b: 1, a: 0.6}
+  SpecularSize: 0.1
+  HeightGradient: 0
+  GradientColor: {r: 0.75, g: 0.85, b: 1, a: 1}
+  GradientSize: 1
+  ColoredShadows: 1
+  ShadowColor: {r: 0.32, g: 0.3, b: 0.5, a: 1}
+  ShadowSharpness: 0.6
+  Outline: 0
+  OutlineColor: {r: 0.12, g: 0.1, b: 0.18, a: 1}
+  OutlineWidth: 1.2

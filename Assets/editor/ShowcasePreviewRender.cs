@@ -29,6 +29,25 @@ public static class ShowcasePreviewRender
         Shot(c, world, "top", new Vector3(0f, 4.2f, -0.6f));
         Shot(c, world, "left", new Vector3(-2.6f, 1.6f, -2.2f));
         Shot(c, world, "closeup-back", new Vector3(0f, 1.0f, -1.2f));
+
+        // One front shot per full-screen look, toggling the renderer features the Look button uses.
+        var data = AssetDatabase.LoadAssetAtPath<UnityEngine.Rendering.Universal.UniversalRendererData>("Assets/Settings/URP-Showcase_Renderer.asset");
+        if (data != null)
+        {
+            var looks = new (string name, string[] features)[]
+            {
+                ("look-outline", new[] { "Outline" }),
+                ("look-4colour", new[] { "Palette 4-Colour" }),
+                ("look-pixel", new[] { "Pixelation", "Outline" }),
+            };
+            foreach (var (name, features) in looks)
+            {
+                foreach (var f in data.rendererFeatures) if (f != null && (f.name == "Outline" || f.name == "Pixelation" || f.name == "Palette 4-Colour")) f.SetActive(features.Contains(f.name));
+                Shot(c, world, name, new Vector3(0f, 2.4f, -3.4f));
+            }
+            foreach (var f in data.rendererFeatures) if (f != null && (f.name == "Outline" || f.name == "Pixelation" || f.name == "Palette 4-Colour")) f.SetActive(false);
+            AssetDatabase.SaveAssets();
+        }
         Object.DestroyImmediate(go);
         Debug.Log("[PREVIEW] done");
     }
