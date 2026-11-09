@@ -435,7 +435,7 @@ setTimeout(() => { console.log('SIGNIN_TIMEOUT'); process.exit(2); }, 180000);
             }
             using (new EditorGUI.DisabledScope(Busy || string.IsNullOrEmpty(Settings.projectId)))
                 if (GUILayout.Button("Publish an already-uploaded version (" + Settings.version + ")")) PublishExisting();
-            EditorGUILayout.HelpBox("If the upload fails, the tool zips the build, shows it in Finder and opens ZapWorks so you can upload the zip by hand. Zips are named " + ZapparRelease.ZipPrefix + "<version>.zip; over " + ZapparRelease.SoftLimitMB + " MB warns, over " + ZapparRelease.HardLimitMB + " MB is refused (ZapWorks allows 25 MB).", MessageType.None);
+            EditorGUILayout.HelpBox("If the upload fails, the tool zips the build, shows it in Finder and opens ZapWorks so you can upload the zip by hand. Zips are named " + ZapparRelease.ZipPrefix + "<ProductName>-v<version>.zip; over " + ZapparRelease.SoftLimitMB + " MB warns, over " + ZapparRelease.HardLimitMB + " MB is refused (ZapWorks allows 25 MB).", MessageType.None);
 
             if (!string.IsNullOrEmpty(m_lastUrl))
             {

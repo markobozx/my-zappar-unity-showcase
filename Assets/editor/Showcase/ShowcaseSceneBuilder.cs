@@ -30,7 +30,7 @@ namespace Showcase.EditorTools
         // Committed in the repo; the built app re-reads it from GitHub at startup, so editing it on
         // github.com changes which experience each target opens without a new build.
         public const string RemoteConfigFile = "RemoteConfig/showcase-config.json";
-        public const string RemoteConfigUrl = "https://raw.githubusercontent.com/markobozx/unity-example-image-tracking-3d-animation/urp-migration/" + RemoteConfigFile;
+        public const string RemoteConfigUrl = "https://raw.githubusercontent.com/markobozx/my-zappar-unity-showcase/urp-migration/" + RemoteConfigFile;
 
         // Pedestal defaults, used until an experience's builder exists.
         static readonly (string id, string title, string blurb, string prop)[] Slots =

@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEditor.Build.Reporting;
 using UnityEngine;
@@ -9,7 +10,7 @@ using UnityEngine;
 namespace ZapparCliTools
 {
     // Release packaging shared by the ZapWorks CLI window and batch builds:
-    //   Builds/ZappAR-Unity-WebGL-v<version>.zip, index.html at the root (the layout ZapWorks expects).
+    //   Builds/ZappAR-Unity-WebGL-<ProductName>-v<version>.zip, index.html at the root (the layout ZapWorks expects).
     // ZapWorks rejects uploads over 25 MB; we warn above SoftLimitMB and refuse above HardLimitMB,
     // which leaves headroom for later additions.
     //
@@ -18,14 +19,17 @@ namespace ZapparCliTools
     //   Exit code 1 when the build fails or the zip is over the hard limit.
     public static class ZapparRelease
     {
-        public const string ZipPrefix = "ZappAR-Unity-WebGL-v";
+        public const string ZipPrefix = "ZappAR-Unity-WebGL-";
         public const float SoftLimitMB = 20f;
         public const float HardLimitMB = 22f;
 
         static void Log(string m) => Debug.Log("[SHOWCASE-RELEASE] " + m);
 
+        public static string ZipName(string version) =>
+            ZipPrefix + Regex.Replace(PlayerSettings.productName, @"[^A-Za-z0-9_-]+", "-").Trim('-') + "-v" + version + ".zip";
+
         public static string ZipPathFor(string buildDir, string version) =>
-            Path.Combine(Path.GetDirectoryName(Path.GetFullPath(buildDir)), ZipPrefix + version + ".zip");
+            Path.Combine(Path.GetDirectoryName(Path.GetFullPath(buildDir)), ZipName(version));
 
         // The version shows on the scan screen (Application.version), so set it before every build.
         public static BuildReport Build(string buildDir, string version)
