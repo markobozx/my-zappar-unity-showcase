@@ -272,13 +272,6 @@ namespace Showcase.EditorTools
                 targets.Add(new ShowcaseTarget { Id = id, Experience = exp, Image = AssetDatabase.LoadAssetAtPath<Texture2D>(imagePath), Tracker = tracker });
             }
 
-            // Trackers left over from removed targets would still cost tracking time.
-            foreach (var t in trackers.Where(t => targets.All(x => x.Tracker != t)).ToList())
-            {
-                if (world.IsChildOf(t.transform)) { Log("WARNING: tracker " + t.name + " holds World but has no target image; kept"); continue; }
-                Log("Removed tracker " + t.name + " (no image in " + TargetImagesFolder + ")");
-                UnityEngine.Object.DestroyImmediate(t.gameObject);
-            }
             if (targets.Count == 0) { Log("ERROR: no image targets (need " + TargetImagesFolder + "/<name>.png + " + ZptFolder + "/<name>.zpt)"); return; }
             if (targets.Count > 4) Log("WARNING: " + targets.Count + " targets: every tracker runs each frame, so older phones may slow down");
 
@@ -299,6 +292,12 @@ namespace Showcase.EditorTools
             Transform content = world;
             while (content.parent != null && content.parent.GetComponent<Zappar.ZapparImageTrackingTarget>() == null) content = content.parent;
             if (content.parent != targets[0].Tracker.transform) content.SetParent(targets[0].Tracker.transform, false);
+            // Trackers left over from removed targets would still cost tracking time.
+            foreach (var t in trackers.Where(t => targets.All(x => x.Tracker != t)).ToList())
+            {
+                Log("Removed tracker " + t.name + " (no image in " + TargetImagesFolder + ")");
+                UnityEngine.Object.DestroyImmediate(t.gameObject);
+            }
             var zcam = arCam != null ? arCam.GetComponent<Zappar.ZapparCamera>() : null;
             if (zcam != null) { zcam.AnchorOrigin = targets[0].Tracker; EditorUtility.SetDirty(zcam); }
             ZapparCliTools.ZapparTargets.RecordBuilt(targets.Select(t => t.Id));

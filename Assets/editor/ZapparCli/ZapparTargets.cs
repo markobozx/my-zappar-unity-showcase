@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using UnityEditor;
+using UnityEngine;
 using Debug = UnityEngine.Debug;
 
 namespace ZapparCliTools
@@ -196,6 +197,25 @@ namespace ZapparCliTools
                 }
             }
             return report;
+        }
+
+        // Detection features stored in the trained .zpt (its "ODLE" chunk). Working targets have ~90-105 KB;
+        // flat-colour artwork came out at 6-10 KB and was never detected on phones.
+        public const int WeakDetectionBytes = 40000;
+
+        public static int DetectionBytes(string zptPath)
+        {
+            if (!File.Exists(zptPath)) return -1;
+            var d = File.ReadAllBytes(zptPath);
+            for (int i = 12; i + 8 <= d.Length;)
+            {
+                string id = Encoding.ASCII.GetString(d, i, 4);
+                int n = BitConverter.ToInt32(d, i + 4);
+                if (id == "ODLE") return n;
+                if (n < 0) break;
+                i += 8 + n;
+            }
+            return 0;
         }
 
         public static string RebuildScene()

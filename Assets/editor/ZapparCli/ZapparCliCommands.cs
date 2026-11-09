@@ -42,7 +42,11 @@ namespace ZapparCliTools
             UnityEditor.AssetDatabase.ImportAsset(dest);
             if (!ZapparTargets.TrainSync(dest, new ZapparTargets.TrainOptions { Dpi = dpi }, out string log))
                 throw new InvalidOperationException("Training failed for " + dest + ":\n" + log);
-            string result = "Added target " + Path.GetFileNameWithoutExtension(dest) + " (" + dest + ", " + ZapparTargets.ZptPathFor(Path.GetFileNameWithoutExtension(dest)) + ")";
+            string zptPath = ZapparTargets.ZptPathFor(Path.GetFileNameWithoutExtension(dest));
+            int detection = ZapparTargets.DetectionBytes(zptPath);
+            string result = "Added target " + Path.GetFileNameWithoutExtension(dest) + " (" + dest + ", " + zptPath + "), detection " + detection + " bytes";
+            if (detection < ZapparTargets.WeakDetectionBytes)
+                result += "\nWARNING: weak target (working targets have ~90-105 KB). Flat colours / few details: it will likely never be detected. Add detail (border, text, texture) or pick another image.";
             if (rebuild) result += "\n" + ZapparTargets.RebuildScene();
             return result;
         }
@@ -60,6 +64,21 @@ namespace ZapparCliTools
             string result = "Removed target " + id;
             if (rebuild) result += "\n" + ZapparTargets.RebuildScene();
             return result;
+        }
+
+        [CliCommand("zappar_target_info", "Detection quality and size (in tracker units) of trained targets")]
+        static string TargetInfo([CliArg("id", "Target id (default: all)")] string id = "")
+        {
+            var sb = new StringBuilder();
+            foreach (var t in ZapparTargets.Scan().Where(t => t.Trained && (id == "" || t.Id == id)))
+            {
+                int det = ZapparTargets.DetectionBytes(t.ZptPath);
+                // Zappar's convention for flat targets: 2 units tall, width from the image's aspect ratio.
+                var tex = UnityEditor.AssetDatabase.LoadAssetAtPath<UnityEngine.Texture2D>(t.ImagePath);
+                string size = tex != null ? (2f * tex.width / tex.height).ToString("0.###") + " x 2" : "unknown";
+                sb.AppendLine(t.Id + ": detection " + det + " bytes" + (det < ZapparTargets.WeakDetectionBytes ? " (WEAK: likely never detected)" : " (good)") + ", size " + size + " tracker units");
+            }
+            return sb.Length == 0 ? "No trained target" + (id == "" ? "s" : " '" + id + "'") : sb.ToString().TrimEnd();
         }
 
         [CliCommand("zappar_train_missing", "Train every image in the target images folder that has no .zpt yet")]

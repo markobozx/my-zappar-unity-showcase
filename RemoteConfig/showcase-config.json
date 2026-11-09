@@ -1,6 +1,13 @@
 {
-  "defaultExperience": "hub",
-  "targets": [
-    { "id": "example-tracking-image", "experience": "hub" }
-  ]
+    "defaultExperience": "hub",
+    "targets": [
+        {
+            "id": "example-tracking-image",
+            "experience": "hub"
+        },
+        {
+            "id": "arte-moderno",
+            "experience": "modernart"
+        }
+    ]
 }

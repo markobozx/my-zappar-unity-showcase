@@ -35,6 +35,7 @@ Exit code 0 = success; output lines are tagged `[ZAPPAR]`.
 | `zappar_status` | product, next version, ZapWorks project id, every target (trained? in scene?), rebuild needed, last zip |
 | `zappar_add_target -image <png/jpg> [-dpi N] [-rebuild false]` | copies the image to `Assets/Showcase/Targets/<id>.png`, trains `Assets/StreamingAssets/<id>.zpt` with `zapworks train`, rebuilds the scene |
 | `zappar_remove_target -id <id> [-rebuild false]` | deletes the image + .zpt, rebuilds |
+| `zappar_target_info [-id <id>]` | detection quality (bytes of detection features; < 40 KB = weak, working targets ~90–105 KB) and size per target |
 | `zappar_train_missing` | trains every target image without a .zpt |
 | `zappar_rebuild_scene` | full scene build (every trained target gets a tracker and appears on the start screen) |
 | `zappar_build_release [-version x.y.z]` | WebGL build → `Builds/ZappAR-Unity-WebGL-<ProductName>-v<version>.zip`, limit check, bumps next version |
@@ -66,6 +67,15 @@ Other tools:
 In the Editor: drop the image into `Assets/Showcase/Targets/` (auto-trained) or use Zappar > Zappar CLI Tools > Image Targets,
 then press the orange "Rebuild scene for targets". Several targets → the start screen becomes a slideshow.
 Every tracker runs each frame; more than ~4 targets slows older phones (the build warns).
+Target quality: detection needs many small, high-contrast, non-repeating details. Flat-colour artwork (Mondrian,
+Van Doesburg) trained to 6–10 KB of detection data and was never detected; photos, text and textured prints reach
+~90–105 KB. Pixel size matters little above ~800 px (300 px loses ~40%). `zappar_add_target` warns on weak images.
+Target space: a flat target is 2 units tall and 2 × aspect wide, lying in the tracker's X/Z plane with its top edge
+at +Z (see `11_ModernArtBuilder`, which lines a "Target Space" transform up with the tracker).
+
+**Add a 3D character / .glb** — shrink its textures first (`python3 tools/glb-shrink.py in.glb out.glb 1024 256`,
+needs Pillow), put it under `Assets/Showcase/<Scene>/`, import with glTFast (package `com.unity.cloud.gltfast`);
+set `animationMethod: 1` (Legacy) in the .glb.meta to drive clips with an `Animation` component (see `TheoCharacter`).
 
 **Choose what a target opens** — `showcase_set_target_experience`, then commit + push `RemoteConfig/showcase-config.json`:
 the live app reads it from GitHub at startup (cached ≤ 5 min), no new build needed. The Editor reads the local file.
